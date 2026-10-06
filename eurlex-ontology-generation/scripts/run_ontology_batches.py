@@ -101,8 +101,11 @@ def run_pipeline(
     pipeline_name: str,
     parameter_namespace: str,
     batch_id: int,
+    extra_params: dict | None = None,
+    log_suffix: str = "",
 ) -> int:
 
+    params = {"batch_id": batch_id, **(extra_params or {})}
     command = [
         "uv",
         "run",
@@ -112,12 +115,12 @@ def run_pipeline(
         "--pipelines",
         pipeline_name,
         "--params",
-        f"{parameter_namespace}.batch_id={batch_id}",
+        ",".join(f"{parameter_namespace}.{k}={v}" for k, v in params.items()),
     ]
 
     log_path = (
         Path("logs/batches")
-        / f"batch_{batch_id:05d}_{pipeline_name}.log"
+        / f"batch_{batch_id:05d}_{pipeline_name}{log_suffix}.log"
     )
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -153,7 +156,9 @@ be inspected.
 def validate_review_output(
     batch_id: int,
     expected_count: int,
-) -> bool:
+    review_round: int = 0,
+) -> tuple[bool, int]:
+    """Returns (valid, number_of_approved_chunks) for this batch and round."""
 
     group_id = batch_id // 1000
 
@@ -166,23 +171,26 @@ def validate_review_output(
         print(
             f"Review output not found: {output_path}"
         )
-        return False
+        return False, 0
 
     reviews = pd.read_csv(
         output_path,
         encoding="utf-8",
     )
+    if "round" not in reviews.columns:
+        reviews["round"] = 0
 
     batch_reviews = reviews[
-        reviews["batch_id"] == batch_id
+        (reviews["batch_id"] == batch_id)
+        & (reviews["round"].fillna(0).astype(int) == review_round)
     ]
 
     if len(batch_reviews) != expected_count:
         print(
-            f"Review output contains {len(batch_reviews)} rows, "
+            f"Review output (round {review_round}) contains {len(batch_reviews)} rows, "
             f"expected {expected_count}."
         )
-        return False
+        return False, 0
 
     failed_reviews = batch_reviews[
         batch_reviews["status"].isin(
@@ -195,9 +203,12 @@ def validate_review_output(
             f"Review failed for "
             f"{len(failed_reviews)} chunk(s)."
         )
-        return False
+        return False, 0
 
-    return True
+    approved = int(
+        batch_reviews["approved"].astype(str).str.strip().str.lower().eq("true").sum()
+    )
+    return True, approved
 
 
 """
@@ -257,72 +268,65 @@ def validate_revision_output(
     return True
 
 
-# Execute the complete ontology-processing pipeline for one batch
+# Execute the complete ontology-processing pipeline for one batch:
+#   generate -> review (round 0) -> revise (round 1) -> review (round 1)
+#   -> [revise (round 2) -> review (round 2)] ... up to `review_rounds`.
+# A revision is only trusted after it has been reviewed, so the loop always
+# ends on a review. It stops early once every chunk of the batch is approved.
 def run_batch(
     batch_id: int,
     expected_count: int,
-) -> bool:   
+    review_rounds: int = 2,
+) -> bool:
 
     # Step 1: Generate candidate ontologies.
-    return_code = run_pipeline(
-        pipeline_name="ontology_generation",
-        parameter_namespace="ontology_generation",
-        batch_id=batch_id,
-    )
-
-    if return_code != 0:
-        print(
-            f"Ontology generation failed for batch {batch_id}."
-        )
+    if run_pipeline("ontology_generation", "ontology_generation", batch_id) != 0:
+        print(f"Ontology generation failed for batch {batch_id}.")
         return False
 
-    # Step 2: Review generated ontologies.
-    return_code = run_pipeline(
-        pipeline_name="ontology_review",
-        parameter_namespace="ontology_review",
-        batch_id=batch_id,
-    )
-
-    if return_code != 0:
-        print(
-            f"Ontology review pipeline failed for batch {batch_id}."
-        )
+    # Step 2: Review the generator's candidates (round 0).
+    if run_pipeline("ontology_review", "ontology_review", batch_id,
+                    {"round": 0, "source": "candidates"}, "_r0") != 0:
+        print(f"Ontology review pipeline failed for batch {batch_id}.")
         return False
 
     # The review pipeline may exit successfully even if the LLM judge
     # returned an error for one or more chunks.
-    if not validate_review_output(
-        batch_id=batch_id,
-        expected_count=expected_count,
-    ):
-        print(
-            f"Ontology review validation failed for batch {batch_id}."
-        )
+    valid, approved = validate_review_output(batch_id, expected_count, 0)
+    if not valid:
+        print(f"Ontology review validation failed for batch {batch_id}.")
         return False
+    print(f"[batch {batch_id}] round 0: {approved}/{expected_count} approved", flush=True)
 
-    # Step 3: Revise ontologies that require revision.
-    return_code = run_pipeline(
-        pipeline_name="ontology_revision",
-        parameter_namespace="ontology_revision",
-        batch_id=batch_id,
-    )
+    # Steps 3+: revise, then re-review the revision. Even when everything is
+    # approved in round 0 one revision pass runs, so that every chunk goes
+    # through the deterministic normalisation before the merge.
+    for review_round in range(1, max(review_rounds, 1) + 1):
+        if run_pipeline("ontology_revision", "ontology_revision", batch_id,
+                        {"round": review_round}, f"_r{review_round}") != 0:
+            print(f"Ontology revision pipeline failed for batch {batch_id}.")
+            return False
 
-    if return_code != 0:
-        print(
-            f"Ontology revision pipeline failed for batch {batch_id}."
-        )
-        return False
+        # The revision pipeline can keep the original ontology when
+        # the LLM output is truncated or invalid. Detect that explicitly.
+        if not validate_revision_output(batch_id=batch_id, expected_count=expected_count):
+            print(f"Ontology revision validation failed for batch {batch_id}.")
+            return False
 
-    # The revision pipeline can keep the original ontology when
-    # the LLM output is truncated or invalid. Detect that explicitly.
-    if not validate_revision_output(
-        batch_id=batch_id,
-        expected_count=expected_count,
-    ):
-        print(
-            f"Ontology revision validation failed for batch {batch_id}."
-        )
-        return False
+        if run_pipeline("ontology_review", "ontology_review", batch_id,
+                        {"round": review_round, "source": "revisions"},
+                        f"_r{review_round}") != 0:
+            print(f"Ontology re-review failed for batch {batch_id} (round {review_round}).")
+            return False
+
+        valid, approved = validate_review_output(batch_id, expected_count, review_round)
+        if not valid:
+            print(f"Ontology re-review validation failed for batch {batch_id}.")
+            return False
+        print(f"[batch {batch_id}] round {review_round}: {approved}/{expected_count} approved",
+              flush=True)
+        if approved == expected_count:
+            break
 
     return True
 
@@ -384,6 +388,13 @@ def parse_arguments() -> argparse.Namespace:
         help="Only process batches with batch_id >= this value.",
     )
     parser.add_argument(
+        "--review-rounds",
+        type=int,
+        default=2,
+        help="Maximum revise -> re-review rounds per batch (the loop stops early "
+             "when every chunk is approved).",
+    )
+    parser.add_argument(
         "--end-batch",
         type=int,
         default=None,
@@ -427,6 +438,7 @@ def main() -> None:
                 ok = run_batch(
                     batch_id=batch_id,
                     expected_count=expected_count,
+                    review_rounds=args.review_rounds,
                 )
             except Exception as exc:
                 print(f"[batch {batch_id}] exception: {exc}", flush=True)

@@ -44,6 +44,29 @@ def _dicts(value: Any) -> list[dict]:
     return [i for i in value if isinstance(i, dict)] if isinstance(value, list) else []
 
 
+def _is_true(value: Any) -> bool:
+    return str(value).strip().lower() in ("true", "1", "1.0")
+
+
+# Chunks of support that come from review-approved ontologies. Partition-level
+# objects carry it in support.approved_chunks; chunk-level rows carry the
+# row's final review verdict.
+def _approved_support(obj: dict, row_approved: bool, chunks: int) -> int:
+    s = obj.get("support")
+    if isinstance(s, dict) and "approved_chunks" in s:
+        try:
+            return int(s["approved_chunks"])
+        except (TypeError, ValueError):
+            return 0
+    return chunks if row_approved else 0
+
+
+def _constraint_key(c: dict) -> tuple:
+    if "left_operand" in c:
+        return (c["left_operand"], c.get("operator"), c.get("right_operand"))
+    return (c.get("name"), c.get("value"))
+
+
 # Extract (chunk_count, document_count) support metrics from an entity dictionary
 def _support(obj: dict) -> tuple[int, int]:
     s = obj.get("support")
@@ -76,6 +99,10 @@ def assemble_merged_ontology(
     # Data structures for accumulating resolved entities and support metrics
     classes: dict[str, dict] = {}
     type_votes: dict[str, Counter] = defaultdict(Counter)
+    is_a_votes: dict[str, Counter] = defaultdict(Counter)
+    kind_votes: dict[str, Counter] = defaultdict(Counter)
+    class_iri: dict[str, str] = {}
+    class_approved: Counter = Counter()
     class_chunks: Counter = Counter()
     class_docs: dict[str, set] = defaultdict(set)
     class_docs_n: Counter = Counter()          # documents carried over from lower-level support
@@ -104,6 +131,7 @@ def assemble_merged_ontology(
         celex = raw_celex if raw_celex and raw_celex != source_id else celex_of(source_id)
         source_ids.add(source_id)
         source_celex.add(celex)
+        row_approved = _is_true(row.get("approved", False))
 
         # Parse inherited source/document metadata if available
         m = _SOURCE_COUNT_RE.search(str(onto.get("description", "")))
@@ -137,6 +165,13 @@ def assemble_merged_ontology(
             class_docs_n[name] += max(docs - 1, 0)
             if cls.get("type"):
                 type_votes[name][cls["type"]] += chunks
+            if cls.get("is_a"):
+                is_a_votes[name][cls["is_a"]] += chunks
+            if cls.get("kind"):
+                kind_votes[name][cls["kind"]] += chunks
+            if cls.get("iri"):
+                class_iri.setdefault(name, cls["iri"])
+            class_approved[name] += _approved_support(cls, row_approved, chunks)
 
             # Merge class descriptions
             existing = classes.setdefault(name, {"description": ""})
@@ -182,6 +217,7 @@ def assemble_merged_ontology(
                         dropped["rule_leaky_action"] += 1
                         continue
                     action = action_map.get(action, action)
+                    action_object = normalize_action(rule.get("action_object") or "") or None
 
                     # Resolve parties and assets
                     raw_party = rule.get("party")
@@ -201,18 +237,24 @@ def assemble_merged_ontology(
                     # Clean and collect constraints
                     constraints = [c for c in (clean_constraint(c) for c in _dicts(rule.get("constraints"))) if c]
                     for party in parties:
-                        key = (action, party, asset)
+                        key = (action, action_object, party, asset)
                         entry = rules[kind].setdefault(
-                            key, {"action": action, "party": party, "asset": asset,
-                                  "constraints": [], "support": 0})
-                        entry["support"] += _support(rule)[0]
+                            key, {"action": action, "action_object": action_object,
+                                  "action_label": rule.get("action_label"),
+                                  "party": party, "asset": asset,
+                                  "constraints": [], "support": 0, "approved_support": 0})
+                        rule_chunks = _support(rule)[0]
+                        entry["support"] += rule_chunks
+                        entry["approved_support"] += _approved_support(rule, row_approved, rule_chunks)
+                        if rule.get("provision") and not entry.get("provision"):
+                            entry["provision"] = rule["provision"]
 
                         # Unique constraint aggregation per rule
-                        seen = {(c["name"], c["value"]) for c in entry["constraints"]}
+                        seen = {_constraint_key(c) for c in entry["constraints"]}
                         for c in constraints:
-                            if (c["name"], c["value"]) not in seen and len(entry["constraints"]) < MAX_CONSTRAINTS_PER_RULE:
+                            if _constraint_key(c) not in seen and len(entry["constraints"]) < MAX_CONSTRAINTS_PER_RULE:
                                 entry["constraints"].append(c)
-                                seen.add((c["name"], c["value"]))
+                                seen.add(_constraint_key(c))
 
         # 1d: Process legal patterns
         for pat in _dicts(onto.get("legal_patterns")):
@@ -260,11 +302,19 @@ def assemble_merged_ontology(
         
         if declared not in (VALID_CORE_TYPES | {"Legal_extension"}):
             declared = "Legal_extension"
-        final_classes.append({
+        entry = {
             "name": name, "type": declared, "description": cls["description"],
             "support": {"chunks": class_chunks[name],
-                        "documents": len(class_docs[name]) + class_docs_n[name]},
-        })
+                        "documents": len(class_docs[name]) + class_docs_n[name],
+                        "approved_chunks": class_approved[name]},
+        }
+        if is_a_votes.get(name):
+            entry["is_a"] = is_a_votes[name].most_common(1)[0][0]
+        if kind_votes.get(name):
+            entry["kind"] = kind_votes[name].most_common(1)[0][0]
+        if name in class_iri:
+            entry["iri"] = class_iri[name]
+        final_classes.append(entry)
 
     # a name that is used as party/asset in the rights model but typed Legal_extension stays as is:
     # we do not guess types, but we report the mismatch in provenance
@@ -342,7 +392,13 @@ def assemble_merged_ontology(
 # Format an internal rule entry into a standardized public JSON representation
 def _public(rule: dict, kind: str) -> dict:
     out = {"action": rule["action"], "party": rule["party"], "constraints": rule["constraints"],
-           "support": {"chunks": rule["support"]}}
+           "support": {"chunks": rule["support"], "approved_chunks": rule.get("approved_support", 0)}}
+    if rule.get("action_object"):
+        out["action_object"] = rule["action_object"]
+    if rule.get("action_label"):
+        out["action_label"] = rule["action_label"]
+    if rule.get("provision"):
+        out["provision"] = rule["provision"]
     if rule.get("asset") or kind == "permissions":
         out["asset"] = rule.get("asset")
     return out

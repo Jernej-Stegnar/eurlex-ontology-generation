@@ -9,6 +9,9 @@
    unless --force is passed).
 3. Optionally runs ontology_merge_global once at the end, so the
    final ontology reflects every partition merged so far.
+4. Then runs ontology_refinement on the global merge (deterministic typing,
+   class/individual split, controlled vocabulary, consistency report),
+   unless --skip-refinement is given.
 
 This mirrors the checkpoint/resume pattern already used by
 scripts/run_ontology_batches.py, but at the partition level instead
@@ -90,6 +93,11 @@ def parse_arguments() -> argparse.Namespace:
         help="Do not run ontology_merge_global at the end (only merge partitions).",
     )
     parser.add_argument(
+        "--skip-refinement",
+        action="store_true",
+        help="Do not run ontology_refinement after the global merge.",
+    )
+    parser.add_argument(
         "--max-partitions",
         type=int,
         default=None,
@@ -135,6 +143,18 @@ def main() -> None:
             print("Global merge failed.")
             sys.exit(1)
         print("Global merge completed.")
+
+        if not args.skip_refinement:
+            print()
+            print("=" * 70)
+            print("Running ontology refinement")
+            print("=" * 70)
+            result = subprocess.run(
+                ["uv", "run", "kedro", "run", "--pipelines", "ontology_refinement"], check=False)
+            if result.returncode != 0:
+                print("Ontology refinement failed.")
+                sys.exit(1)
+            print("Refinement completed: data/07_model_output/eurlex_odrl_ontology_refined.json")
 
 
 if __name__ == "__main__":

@@ -3,80 +3,16 @@ import re
 from pathlib import Path
 import pandas as pd
 
-from typing import Literal
-from pydantic import BaseModel
-
 from ...utils.llm_client import llm_chat, run_parallel
+from ...utils.ontology_normalize import normalize_chunk_ontology
+from ...utils.ontology_schema import build_ontology_model
 from ...utils.persist import append_dedup_csv
+from ...utils.vocabulary import load_vocabulary, render_prompt
 
 
-# Pydantic Schemas for Revised ODRL Ontology Validation
+# The revision output is validated against the same vocabulary-driven schema
+# as generation (utils/ontology_schema.py): one definition for both steps.
 
-class ODRLAlignment(BaseModel):
-    core_entities: list[str]
-    extensions: list[str]
-
-
-class OntologyClass(BaseModel):
-    name: str
-    type: Literal[
-        "Asset", "Party", "RightsHolder", "Permission",
-        "Prohibition", "Duty", "Constraint", "Legal_extension",
-    ]
-    description: str
-
-
-class Relationship(BaseModel):
-    source: str
-    relation: str
-    target: str
-    description: str = ""
-
-
-class ConstraintItem(BaseModel):
-    name: str
-    value: str
-
-
-class PermissionRule(BaseModel):
-    action: str
-    asset: str
-    party: str
-    constraints: list[ConstraintItem]
-
-
-class DutyRule(BaseModel):
-    action: str
-    party: str
-    constraints: list[ConstraintItem]
-
-
-class RightsModel(BaseModel):
-    permissions: list[PermissionRule]
-    duties: list[DutyRule]
-
-
-class LegalPattern(BaseModel):
-    pattern_name: str
-    description: str
-    entities_involved: list[str]
-
-
-class ExampleInstance(BaseModel):
-    entity: str
-    example_value: str
-    source_context: str
-
-
-class OntologyRevision(BaseModel):
-    ontology_name: str
-    description: str
-    odrl_alignment: ODRLAlignment
-    classes: list[OntologyClass]
-    relationships: list[Relationship]
-    rights_model: RightsModel
-    legal_patterns: list[LegalPattern]
-    example_instances: list[ExampleInstance]
 
 
 # Calculate the persistent group identifier for a batch
@@ -130,6 +66,15 @@ def load_ontology_reviews(
         reviews["batch_id"] == batch_id
     ].copy()
 
+    # The reviews file keeps every round; revise against the latest one.
+    if "round" not in batch_reviews.columns:
+        batch_reviews["round"] = 0
+    batch_reviews["round"] = batch_reviews["round"].fillna(0).astype(int)
+    batch_reviews = (
+        batch_reviews.sort_values("round")
+        .drop_duplicates(subset=["chunk_id"], keep="last")
+    )
+
     batch_reviews["revision_required"] = (
         batch_reviews["revision_required"]
         .astype(str).str.strip().str.lower().eq("true")
@@ -158,7 +103,18 @@ def revise_ontologies(
     num_ctx: int,
     num_predict: int,
     llm_backend: dict,
+    revision_round: int = 1,
+    normalize_after_revision: bool = True,
+    vocabulary_path: str | None = None,
 ) -> pd.DataFrame:
+
+    rendered_system_prompt = render_prompt(system_prompt, vocabulary_path)
+    schema_model = build_ontology_model(vocabulary_path) if json_mode else None
+
+    def _normalize(ontology: dict) -> tuple[dict, list]:
+        if not normalize_after_revision:
+            return ontology, []
+        return normalize_chunk_ontology(ontology, load_vocabulary(vocabulary_path))
 
     ontology_reviews = load_ontology_reviews(
         batch_id=batch_id,
@@ -171,21 +127,30 @@ def revise_ontologies(
         base = {
             "batch_id": batch_id,
             "chunk_id": row["chunk_id"],
+            "round": revision_round,
             "CELEX": row["CELEX"],
             "text": row["text"],
         }
 
         if not row["revision_required"]:
-            return {**base, "ontology": row["ontology"], "revised": False,
-                    "revision_status": "skipped_not_required"}
+            try:
+                kept, changes = _normalize(json.loads(row["ontology"]))
+                ontology = json.dumps(kept, ensure_ascii=False)
+            except (TypeError, json.JSONDecodeError):
+                ontology, changes = row["ontology"], []
+            return {**base, "ontology": ontology, "revised": False,
+                    "revision_status": "skipped_not_required",
+                    "approved_in_round": int(row.get("round", 0) or 0),
+                    "normalization_changes": json.dumps(changes, ensure_ascii=False)}
 
-        user_prompt = user_prompt_template.format(
+        user_prompt = render_prompt(
+            user_prompt_template, vocabulary_path,
             ontology=row["ontology"], text=row["text"], review=row["review"],
         )
 
         response = llm_chat(
-            llm_backend, model, system_prompt, user_prompt, temperature,
-            schema_model=OntologyRevision if json_mode else None,
+            llm_backend, model, rendered_system_prompt, user_prompt, temperature,
+            schema_model=schema_model,
             num_ctx=num_ctx,
             max_tokens=num_predict,
         )
@@ -203,6 +168,12 @@ def revise_ontologies(
         )
         revised_ontology_json = _sync_extensions_with_classes(revised_ontology_json)
 
+        # Deterministic fixes the LLM is unreliable at (typing, leakage,
+        # vocabulary, referential closure). Recorded per chunk.
+        changes: list = []
+        if not used_fallback:
+            revised_ontology_json, changes = _normalize(revised_ontology_json)
+
         if used_fallback:
             status = ("failed_truncated_output" if done_reason == "length"
                       else "failed_fallback_original_kept")
@@ -216,6 +187,8 @@ def revise_ontologies(
             "ontology": json.dumps(revised_ontology_json, ensure_ascii=False),
             "revised": not used_fallback,
             "revision_status": status,
+            "approved_in_round": None,
+            "normalization_changes": json.dumps(changes, ensure_ascii=False),
         }
 
     rows = [row for _, row in ontology_reviews.iterrows()]
@@ -306,6 +279,17 @@ def validate_revised_ontologies(
         ]
         if invalid_type_classes:
             issues.append(f"invalid_class_type:{sorted(n for n in invalid_type_classes if n)}")
+
+        # Controlled-vocabulary checks (only meaningful after normalisation)
+        vocab = load_vocabulary()
+        leaked = sorted(c.get("name") for c in classes
+                        if isinstance(c, dict) and vocab.metamodel_leakage(c.get("name") or ""))
+        if leaked:
+            issues.append(f"metamodel_leakage:{leaked}")
+        bad_is_a = sorted(c.get("name") for c in classes
+                          if isinstance(c, dict) and c.get("is_a") not in vocab.upper)
+        if bad_is_a:
+            issues.append(f"missing_or_invalid_is_a:{bad_is_a}")
 
         # Extensions <-> classes consistency check
         extensions = set(

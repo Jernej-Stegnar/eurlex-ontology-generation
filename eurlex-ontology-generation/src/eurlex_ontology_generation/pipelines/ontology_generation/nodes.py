@@ -5,7 +5,9 @@ import pandas as pd
 from pathlib import Path
 
 from ...utils.llm_client import llm_chat, run_parallel
+from ...utils.ontology_schema import build_ontology_model
 from ...utils.persist import append_dedup_csv
+from ...utils.vocabulary import render_prompt
 
 
 # Load only the partition containing the requested batch.
@@ -121,15 +123,24 @@ def generate_partial_ontologies(
     user_prompt_template: str,
     json_mode: bool,
     llm_backend: dict,
+    structured_output: bool = False,
+    vocabulary_path: str | None = None,
 ) -> pd.DataFrame:
+
+    # The system prompt carries the controlled vocabulary; render it once.
+    rendered_system_prompt = render_prompt(system_prompt, vocabulary_path)
+    schema_model = build_ontology_model(vocabulary_path) if structured_output else None
 
     # Helper closure to process a single chunk row through the LLM pipeline
     def _generate(row) -> dict:
-        user_prompt = user_prompt_template.format(text=row["chunk_text"])
+        user_prompt = render_prompt(user_prompt_template, vocabulary_path, text=row["chunk_text"])
 
-        # Query local LLM via helper utility
+        # Query local LLM via helper utility. With structured_output the JSON
+        # schema (enums for types, is_a, actions, operands, relations) is
+        # enforced by the decoder, not just requested in the prompt.
         response = llm_chat(
-            llm_backend, model, system_prompt, user_prompt, temperature,
+            llm_backend, model, rendered_system_prompt, user_prompt, temperature,
+            schema_model=schema_model,
             json_mode=json_mode,
         )
         ontology_json = extract_json(response.content)

@@ -19,7 +19,14 @@ from eurlex_ontology_generation.utils.ontology_merge_common.entity_resolution im
 # batches processed so far out of the 1000 the partition can hold) -
 # useful to test the merge on a small slice while the full dataset is
 # still being processed in the background.
-def load_partition_revisions(part_id: int, revisions_directory: str) -> pd.DataFrame:
+#
+# When reviews_directory is given, each revision gets the verdict of its
+# latest review round as an `approved` column. The merge then records, for
+# every class and rule, how much of its support comes from approved chunks
+# (support.approved_chunks), so consumers can filter by confidence.
+def load_partition_revisions(part_id: int, revisions_directory: str,
+                             reviews_directory: str | None = None,
+                             exclude_unapproved: bool = False) -> pd.DataFrame:
     path = Path(revisions_directory) / f"part_{part_id:03d}.csv"
     if not path.exists():
         raise FileNotFoundError(f"Revisions partition not found: {path}")
@@ -27,6 +34,22 @@ def load_partition_revisions(part_id: int, revisions_directory: str) -> pd.DataF
     revisions = pd.read_csv(path, encoding="utf-8")
     if revisions.empty:
         raise ValueError(f"Revisions partition {path} is empty.")
+
+    revisions["approved"] = False
+    review_path = Path(reviews_directory) / f"part_{part_id:03d}.csv" if reviews_directory else None
+    if review_path and review_path.exists():
+        reviews = pd.read_csv(review_path, encoding="utf-8")
+        if "round" not in reviews.columns:
+            reviews["round"] = 0
+        reviews["round"] = reviews["round"].fillna(0).astype(int)
+        latest = reviews.sort_values("round").drop_duplicates("chunk_id", keep="last")
+        verdict = latest.set_index("chunk_id")["approved"].astype(str).str.lower().eq("true")
+        # a verdict counts only if that review saw the ontology being merged:
+        # round 0 reviewed the candidate, so only rounds >= 1 judge a revision
+        reviewed_revision = latest.set_index("chunk_id")["round"] >= 1
+        revisions["approved"] = revisions["chunk_id"].map(verdict & reviewed_revision).fillna(False)
+        if exclude_unapproved:
+            revisions = revisions[revisions["approved"]].reset_index(drop=True)
 
     return revisions
 

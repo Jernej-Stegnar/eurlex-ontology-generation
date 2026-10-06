@@ -8,6 +8,9 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 
+from ..entity_linking import load_gazetteer
+from ..vocabulary import load_vocabulary
+
 logger = logging.getLogger(__name__)
 
 # Configuration
@@ -124,6 +127,18 @@ def _plain_key(name: str) -> str:
     return "".join(norm_tokens(name))
 
 
+# Known individuals from the gazetteer are force-merged too
+# ("Moldova" == "Republic_of_Moldova", "SolidarityFund" == "Solidarity Fund").
+# Hand-curated groups above keep their display names; gazetteer entries only
+# add groups and variants that are not already covered.
+def _gazetteer_alias_groups() -> dict[str, list[str]]:
+    try:
+        return load_gazetteer().alias_groups()
+    except Exception as exc:  # missing/invalid resource must not break the merge
+        logger.warning("Gazetteer unavailable (%s): alias merge limited to ALIAS_GROUPS.", exc)
+        return {}
+
+
 # Lookup tables built once at import time from ALIAS_GROUPS:
 #   ALIAS_KEY:     plain key of any variant (or display name) -> plain key of the display name
 #   ALIAS_DISPLAY: plain key of the display name -> display name
@@ -136,6 +151,15 @@ for _display, _variants in ALIAS_GROUPS.items():
     
     for _v in _variants:
         ALIAS_KEY[_plain_key(_v)] = _dk
+
+for _display, _variants in _gazetteer_alias_groups().items():
+    _dk = ALIAS_KEY.get(_plain_key(_display))
+    if _dk is None:
+        _dk = _plain_key(_display)
+        ALIAS_DISPLAY[_dk] = _display
+        ALIAS_KEY[_dk] = _dk
+    for _v in _variants:
+        ALIAS_KEY.setdefault(_plain_key(_v), _dk)
 
 
 # Exact-merge key: two names with the same key are the same entity
@@ -180,6 +204,8 @@ def is_rejected_class(name: str, description: str = "") -> bool:
         return True
     if _plain_key(name) in CORE_TYPE_KEYS or _plain_key(name) in GENERIC_REFS:
         return True
+    if load_vocabulary().metamodel_leakage(name):          # AuditDuty, ...PermissionTarget
+        return True
     if any(p.search(name) for p in INSTANCE_NAME_PATTERNS):
         return True
     if description and INSTANCE_DESC_PATTERN.search(description):
@@ -191,8 +217,21 @@ def is_rejected_class(name: str, description: str = "") -> bool:
 def is_leaky_action(action: str) -> bool:
     return action in LEAKY_ACTION_EXACT or any(p.search(action) for p in LEAKY_ACTION_PATTERNS)
 
-# Returns a cleaned {"name", "value"} dict, or None if the constraint must be discarded
+# Returns a cleaned constraint dict, or None if the constraint must be discarded.
+# Structured ODRL constraints ({left_operand, operator, right_operand}) are kept
+# as they are: their dates and amounts are deliberate, typed values.
+# Legacy {"name", "value"} constraints go through the original filters.
 def clean_constraint(c: dict) -> dict | None:
+    if c.get("left_operand"):
+        right = c.get("right_operand")
+        if right is None or is_placeholder(right) or is_placeholder(c["left_operand"]):
+            return None
+        out = {"left_operand": str(c["left_operand"]), "operator": str(c.get("operator") or "eq"),
+               "right_operand": str(right)}
+        for k in ("unit", "source_name"):
+            if c.get(k):
+                out[k] = str(c[k])
+        return out
     name, value = c.get("name"), c.get("value")
     
     if not name or value is None or is_placeholder(value) or is_placeholder(name):

@@ -7,6 +7,11 @@
 ontology_merge_partition:
   part_id: 0
   revisions_directory: data/04_feature/ontology_revisions
+  # Latest review verdict per chunk is joined in, so every merged class and
+  # rule reports support.approved_chunks next to support.chunks.
+  reviews_directory: data/04_feature/ontology_reviews
+  # true: merge only chunks whose revision was approved by a re-review.
+  exclude_unapproved: false
   output_directory: data/05_model_input/ontology_merges_partition
   provenance_directory: data/05_model_input/ontology_merges_partition_provenance
   cluster_report_directory: data/05_model_input/ontology_merges_partition_cluster_reports

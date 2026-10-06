@@ -8,6 +8,7 @@ from ...utils.llm_client import llm_chat, run_parallel
 from ...utils.persist import append_dedup_csv
 from .ontology_checks import (
     compute_scores,
+    count_warnings,
     filter_missing_concepts,
     filter_ungrounded_terms,
     format_findings,
@@ -236,17 +237,19 @@ def _build_review(
     )
 
     errors = [f for f in findings if f["severity"] == "error"]
-    warnings = [f for f in findings if f["severity"] == "warning"]
+    # 'code': several findings with the same code are one root cause
+    count_by = thresholds.get("count_by", "code")
+    n_warnings = count_warnings(findings, count_by)
 
     # Scores come from evidence (findings + grounded weaknesses), not from
     # the LLM's opinion, which is kept only for reference.
-    overall_score, odrl_compliance = compute_scores(findings, len(grounded))
+    overall_score, odrl_compliance = compute_scores(findings, len(grounded), count_by)
 
     approved = (
         overall_score >= thresholds["min_overall_score"]
         and odrl_compliance >= thresholds["min_odrl_compliance"]
         and len(grounded) <= thresholds["max_verified_weaknesses"]
-        and len(warnings) <= thresholds["max_warnings"]
+        and n_warnings <= thresholds["max_warnings"]
         and not errors
     )
 
@@ -257,6 +260,8 @@ def _build_review(
     amendments_detail: list[dict] = []
     seen_fixes: set[str] = set()
     for f in findings:
+        if f["severity"] == "info":
+            continue
         fix = f.get("fix")
         if fix and fix not in seen_fixes:
             seen_fixes.add(fix)
@@ -324,27 +329,47 @@ def review_ontologies(
     user_prompt_template: str,
     approval_thresholds: dict,
     llm_backend: dict,
+    review_round: int = 0,
+    source: str = "candidates",
+    revisions_directory: str | None = None,
 ) -> pd.DataFrame:
+    """Review one batch.
 
-    ontology_candidates = load_ontology_candidates(
-        batch_id=batch_id,
-        batch_group_size=batch_group_size,
-        candidates_directory=candidates_directory,
-    )
-    source_chunks = load_source_chunks(
-        batch_id=batch_id,
-        batch_group_size=batch_group_size,
-        partition_manifest=chunk_partition_manifest,
-    )
+    round 0 reviews the generator's candidates (source='candidates').
+    round >= 1 re-reviews the latest revisions (source='revisions'), which
+    closes the loop: a revision is only trusted once it has been reviewed.
+    """
+    if source == "revisions":
+        if not revisions_directory:
+            raise ValueError("revisions_directory is required when source='revisions'.")
+        ontology_candidates = load_ontology_candidates(
+            batch_id=batch_id,
+            batch_group_size=batch_group_size,
+            candidates_directory=revisions_directory,
+        )
+        source_chunks = None          # revisions carry their own source text
+    else:
+        ontology_candidates = load_ontology_candidates(
+            batch_id=batch_id,
+            batch_group_size=batch_group_size,
+            candidates_directory=candidates_directory,
+        )
+        source_chunks = load_source_chunks(
+            batch_id=batch_id,
+            batch_group_size=batch_group_size,
+            partition_manifest=chunk_partition_manifest,
+        )
 
     # Helper closure to evaluate deterministic checks and LLM judge for a single candidate
     def _review_row(row) -> dict:
-        matching_chunks = source_chunks[source_chunks["chunk_id"] == row["chunk_id"]]
-        if matching_chunks.empty:
-            raise ValueError(f"Source chunk not found for chunk_id {row['chunk_id']}.")
-
-        chunk = matching_chunks.iloc[0]
-        chunk_text = "" if pd.isna(chunk["chunk_text"]) else str(chunk["chunk_text"])
+        if source_chunks is None:
+            chunk_text = "" if pd.isna(row.get("text")) else str(row["text"])
+        else:
+            matching_chunks = source_chunks[source_chunks["chunk_id"] == row["chunk_id"]]
+            if matching_chunks.empty:
+                raise ValueError(f"Source chunk not found for chunk_id {row['chunk_id']}.")
+            chunk = matching_chunks.iloc[0]
+            chunk_text = "" if pd.isna(chunk["chunk_text"]) else str(chunk["chunk_text"])
         ontology_json = row["ontology"]
 
         # Run deterministic rule checks on candidate JSON
@@ -407,6 +432,7 @@ def review_ontologies(
         return {
             "batch_id": batch_id,
             "chunk_id": row["chunk_id"],
+            "round": review_round,
             "CELEX": row["CELEX"],
             "text": chunk_text,
             "ontology": ontology_json,
@@ -439,4 +465,5 @@ def persist_ontology_reviews(
 
     output_path = Path(output_directory) / f"part_{group_id:03d}.csv"
 
-    return append_dedup_csv(output_path, ontology_reviews)
+    # one row per (chunk, round): the review history is kept
+    return append_dedup_csv(output_path, ontology_reviews, key=["chunk_id", "round"])

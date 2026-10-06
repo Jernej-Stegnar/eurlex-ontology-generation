@@ -1,0 +1,124 @@
+# Seed gazetteer of named EU-law entities.
+#
+# Every entry is an INDIVIDUAL (a single real-world referent), never a class.
+# The refinement step and the review checks use it to:
+#   - fix the type and is_a of known entities deterministically
+#   - turn classes such as "Latvia" or "EGF" into individuals
+#   - force-merge aliases ("Moldova" == "Republic_of_Moldova")
+#
+# iri: only EU Vocabularies country IRIs are filled in, because they are
+# derived mechanically from ISO 3166-1 alpha-3 codes
+# (http://publications.europa.eu/resource/authority/country/<ISO3>).
+# Corporate-body IRIs and Wikidata QIDs are left empty on purpose: fill them
+# from the authority tables, or let the optional Wikidata linker in the
+# refinement pipeline add them (it caches what it finds).
+#
+# This list is a seed, not a complete register. Extend it as new documents
+# are processed; the refinement report lists frequent unlinked names.
+
+country_iri_prefix: "http://publications.europa.eu/resource/authority/country/"
+
+countries:
+  # EU Member States (member_state: true)
+  - {name: Austria, iso3: AUT, member_state: true}
+  - {name: Belgium, iso3: BEL, member_state: true}
+  - {name: Bulgaria, iso3: BGR, member_state: true}
+  - {name: Croatia, iso3: HRV, member_state: true}
+  - {name: Cyprus, iso3: CYP, member_state: true}
+  - {name: Czechia, iso3: CZE, member_state: true, aliases: [Czech Republic]}
+  - {name: Denmark, iso3: DNK, member_state: true}
+  - {name: Estonia, iso3: EST, member_state: true}
+  - {name: Finland, iso3: FIN, member_state: true}
+  - {name: France, iso3: FRA, member_state: true}
+  - {name: Germany, iso3: DEU, member_state: true}
+  - {name: Greece, iso3: GRC, member_state: true, aliases: [Hellenic Republic]}
+  - {name: Hungary, iso3: HUN, member_state: true}
+  - {name: Ireland, iso3: IRL, member_state: true}
+  - {name: Italy, iso3: ITA, member_state: true}
+  - {name: Latvia, iso3: LVA, member_state: true}
+  - {name: Lithuania, iso3: LTU, member_state: true}
+  - {name: Luxembourg, iso3: LUX, member_state: true}
+  - {name: Malta, iso3: MLT, member_state: true}
+  - {name: Netherlands, iso3: NLD, member_state: true, aliases: [The Netherlands]}
+  - {name: Poland, iso3: POL, member_state: true}
+  - {name: Portugal, iso3: PRT, member_state: true}
+  - {name: Romania, iso3: ROU, member_state: true}
+  - {name: Slovakia, iso3: SVK, member_state: true, aliases: [Slovak Republic]}
+  - {name: Slovenia, iso3: SVN, member_state: true}
+  - {name: Spain, iso3: ESP, member_state: true}
+  - {name: Sweden, iso3: SWE, member_state: true}
+  # Third countries (membership is time-dependent: the UK was a Member State until 31 January 2020)
+  - {name: United_Kingdom, iso3: GBR, member_state: false, aliases: [UK, United Kingdom, Great Britain]}
+  - {name: Norway, iso3: NOR, member_state: false}
+  - {name: Iceland, iso3: ISL, member_state: false}
+  - {name: Switzerland, iso3: CHE, member_state: false}
+  - {name: Ukraine, iso3: UKR, member_state: false}
+  - {name: Georgia, iso3: GEO, member_state: false}
+  - {name: Republic_of_Moldova, iso3: MDA, member_state: false, aliases: [Moldova, Republic of Moldova]}
+  - {name: Armenia, iso3: ARM, member_state: false}
+  - {name: Azerbaijan, iso3: AZE, member_state: false}
+  - {name: Belarus, iso3: BLR, member_state: false}
+  - {name: Turkey, iso3: TUR, member_state: false, aliases: [Türkiye]}
+  - {name: Serbia, iso3: SRB, member_state: false}
+  - {name: Albania, iso3: ALB, member_state: false}
+  - {name: Montenegro, iso3: MNE, member_state: false}
+  - {name: North_Macedonia, iso3: MKD, member_state: false, aliases: [North Macedonia]}
+  - {name: Bosnia_and_Herzegovina, iso3: BIH, member_state: false, aliases: [Bosnia and Herzegovina]}
+  - {name: Tunisia, iso3: TUN, member_state: false}
+  - {name: Jordan, iso3: JOR, member_state: false}
+  - {name: Egypt, iso3: EGY, member_state: false}
+  - {name: Morocco, iso3: MAR, member_state: false}
+  - {name: Algeria, iso3: DZA, member_state: false}
+  - {name: Lebanon, iso3: LBN, member_state: false}
+  - {name: Israel, iso3: ISR, member_state: false}
+  - {name: United_States, iso3: USA, member_state: false, aliases: [United States, USA, United States of America]}
+  - {name: China, iso3: CHN, member_state: false}
+  - {name: Japan, iso3: JPN, member_state: false}
+
+entities:
+  # ---- EU institutions ----
+  - {name: European_Parliament, is_a: EUInstitution, aliases: [Parliament, EuropeanParliament, European Parliament]}
+  - {name: Council, is_a: EUInstitution, aliases: [Council of the European Union, Council of the EU, CouncilOfTheEuropeanUnion]}
+  - {name: European_Commission, is_a: EUInstitution, aliases: [Commission, EuropeanCommission, European Commission]}
+  - {name: European_Council, is_a: EUInstitution, aliases: [EuropeanCouncil, European Council]}
+  - {name: Court_of_Justice, is_a: EUInstitution, aliases: [Court of Justice of the European Union, CJEU, CourtOfJustice]}
+  - {name: Court_of_Auditors, is_a: EUInstitution, aliases: [CourtOfAuditors, European Court of Auditors]}
+  - {name: European_Central_Bank, is_a: EUInstitution, aliases: [ECB, EuropeanCentralBank]}
+  # ---- EU bodies, offices, agencies ----
+  - {name: European_External_Action_Service, is_a: EUBody, aliases: [EEAS, European External Action Service]}
+  - {name: OLAF, is_a: EUBody, aliases: [European Anti-Fraud Office, EuropeanAntiFraudOffice]}
+  - {name: European_Investment_Bank, is_a: EUBody, aliases: [EIB, EuropeanInvestmentBank]}
+  - {name: Committee_of_the_Regions, is_a: EUBody, aliases: [CommitteeOfTheRegions, European Committee of the Regions]}
+  - {name: European_Economic_and_Social_Committee, is_a: EUBody, aliases: [EESC, EuropeanEconomicAndSocialCommittee]}
+  - {name: European_Ombudsman, is_a: EUBody, aliases: [Ombudsman]}
+  - {name: European_Public_Prosecutors_Office, is_a: EUBody, aliases: [EPPO]}
+  - {name: Europol, is_a: EUBody, aliases: []}
+  - {name: Frontex, is_a: EUBody, aliases: [European Border and Coast Guard Agency]}
+  - {name: BEREC, is_a: EUBody, aliases: [Body of European Regulators for Electronic Communications]}
+  # ---- Union and international organisations ----
+  - {name: European_Union, is_a: InternationalOrganisation, aliases: [Union, EU, European Union, EuropeanUnion]}
+  - {name: IMF, is_a: InternationalOrganisation, aliases: [International Monetary Fund, InternationalMonetaryFund]}
+  - {name: World_Bank, is_a: InternationalOrganisation, aliases: [WorldBank, World Bank]}
+  - {name: United_Nations, is_a: InternationalOrganisation, aliases: [UN, United Nations]}
+  - {name: OECD, is_a: InternationalOrganisation, aliases: [Organisation for Economic Co-operation and Development]}
+  - {name: WTO, is_a: InternationalOrganisation, aliases: [World Trade Organization]}
+  - {name: Council_of_Europe, is_a: InternationalOrganisation, aliases: [CouncilOfEurope]}
+  - {name: EBRD, is_a: InternationalOrganisation, aliases: [European Bank for Reconstruction and Development]}
+  # ---- Named funds, instruments and programmes (Asset individuals) ----
+  - {name: EGF, is_a: Fund, aliases: [European Globalisation Adjustment Fund, Globalisation Adjustment Fund, EuropeanGlobalisationAdjustmentFund, EuropeanGlobalizationAdjustmentFund, GlobalizationAdjustmentFund]}
+  - {name: European_Union_Solidarity_Fund, is_a: Fund, aliases: [SolidarityFund, Solidarity Fund, EUSF, EU Solidarity Fund, EuropeanUnionSolidarityFund]}
+  - {name: Flexibility_Instrument, is_a: FinancialInstrument, aliases: [FlexibilityInstrument, Flexibility Instrument]}
+  - {name: Emergency_Aid_Reserve, is_a: Fund, aliases: [EmergencyAidReserve]}
+  - {name: EFSD, is_a: Fund, aliases: [European Fund for Sustainable Development, EuropeanFundForSustainableDevelopment]}
+  - {name: EFSD_Guarantee_Fund, is_a: Fund, aliases: [EuropeanFundForSustainableDevelopmentGuaranteeFund, EFSD Guarantee Fund]}
+  - {name: European_Social_Fund, is_a: Fund, aliases: [ESF, EuropeanSocialFund]}
+  - {name: European_Regional_Development_Fund, is_a: Fund, aliases: [ERDF]}
+  - {name: Cohesion_Fund, is_a: Fund, aliases: [CohesionFund]}
+  - {name: EAFRD, is_a: Fund, aliases: [European Agricultural Fund for Rural Development]}
+  - {name: EMFF, is_a: Fund, aliases: [European Maritime and Fisheries Fund]}
+  - {name: Connecting_Europe_Facility, is_a: Fund, aliases: [CEF, ConnectingEuropeFacility]}
+  - {name: Horizon_2020, is_a: Programme, aliases: [Horizon2020, H2020]}
+  - {name: Erasmus_Plus, is_a: Programme, aliases: [Erasmus+, ErasmusPlus, Erasmus]}
+  - {name: PRIMA, is_a: Programme, aliases: [Partnership for Research and Innovation in the Mediterranean Area, PRIMAProgramme]}
+  - {name: Europass, is_a: Programme, aliases: [EuropassFramework, Europass_Platform, Europass Framework]}
+  - {name: Multiannual_Financial_Framework, is_a: Programme, aliases: [MFF, MultiannualFinancialFramework]}

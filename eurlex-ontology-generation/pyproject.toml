@@ -39,6 +39,9 @@ dev = [
 [tool.setuptools.dynamic.version]
 attr = "eurlex_ontology_generation.__version__"
 
+[tool.setuptools.package-data]
+eurlex_ontology_generation = ["resources/*.yml"]
+
 [tool.setuptools.packages.find]
 where = [
     "src",

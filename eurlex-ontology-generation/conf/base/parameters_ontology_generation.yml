@@ -14,96 +14,92 @@ ontology_generation:
   ontology_domain: ODRL   # Domain of the ontology
   json_mode: true
 
+  # Grammar-constrained decoding: pass the full JSON schema (built from
+  # src/eurlex_ontology_generation/resources/vocabulary.yml) to Ollama's `format`
+  # instead of plain JSON mode. Class types, upper classes, actions, constraint
+  # operands/operators and relations become enums the model cannot leave.
+  structured_output: true
+  vocabulary_path: null   # null = packaged resources/vocabulary.yml
+
   # Execution backend and parallelism settings for LLM inference
   llm_backend:
     provider: ollama  # Local backend provider
     max_workers: 5    # Number of concurrent threads for parallel execution
 
   # Prompt instructions that define the LLM's role, task, and output constraints (remains the same for all chunks)
-  # The '|' preserves multiline formatting
+  # Placeholders in {braces} are filled from the controlled vocabulary at run time:
+  # {core_types}, {upper_ontology}, {actions}, {left_operands}, {operators}, {relations}.
+  # Literal braces must be doubled ({{ }}).
   system_prompt: |
-    You are an expert ontology engineer specialized in legal knowledge representation and the W3C Open Digital Rights Language (ODRL) 2.2 Ontology.
+    You are an expert ontology engineer specialized in legal knowledge representation and the W3C Open Digital Rights Language (ODRL) 2.2.
 
-    Your task is to analyze legal text fragments from EUR-Lex and extract a machine-readable ontology strictly aligned with ODRL principles.
+    Your task is to analyze legal text fragments from EUR-Lex and extract a machine-readable ontology aligned with ODRL.
 
-    CORE ODRL ENTITIES:
-    - Asset: The subject, document, product, or legal resource.
-    - Party: An individual, organization, or authority involved (RightsHolder or Assignee).
-    - Permission: An allowed legal action (e.g., odrl:use, apply_levy, import, export).
-    - Prohibition: A explicitly forbidden action.
-    - Duty: A mandatory obligation or requirement that a Party MUST perform.
-    - Constraint: A quantitative or qualitative restriction attached to a Permission or Duty (e.g., spatial, temporal, threshold).
+    ODRL RULES (rights_model):
+    - permissions: actions a party MAY perform.
+    - prohibitions: actions a party MUST NOT perform.
+    - duties: actions a party MUST perform.
+    Each rule has an action, a party (who holds the permission/prohibition/duty), optionally an assigner (who grants or imposes it), an asset (what the action applies to) and constraints.
+    Permission, Prohibition, Duty, Constraint, Policy, Assignee and Target are ODRL structure: NEVER create classes with these words in their name (no "AuditDuty", no "AccessPermissionTarget"). Express them as rules instead.
 
-    RULES FOR EXTRACTION:
-    1. Extract explicitly stated legal rights (Permissions), bans (Prohibitions), and mandatory duties (Duties).
-    2. Actions in permissions/duties MUST be lowercase snake_case (e.g., "calculate_import_duty", not "Calculate the import duty for cereal").
-    3. If a legal rule has a condition/limit (e.g., "effective until 1985", "valid for cereal products"), represent it strictly as a Constraint.
-    4. Do not invent facts not present in the provided text fragment.
-    5. Rely strictly on context provided in the input text for any example instances.
+    CLASSES. Every class has:
+    - type: one of {core_types}. Parties are actors; Assets are things acted upon; Legal_extension is for procedures, measures, events and other legal concepts.
+    - is_a: exactly one parent from this upper ontology (its type must match the parent's group):
+    {upper_ontology}
+    - kind: "individual" for ONE named thing (Latvia, the European Commission, the European Globalisation Adjustment Fund, Regulation (EU) No 1309/2013); "class" for a KIND of thing (Member State, application, financial contribution). Countries, institutions, bodies and named funds or programmes are ALWAYS individuals.
+
+    ACTIONS. "action" is one canonical verb from: {actions}. Use "other" only if none fits. Always also give "action_label": the action as worded in the text, snake_case (e.g. provide_financial_contribution).
+
+    CONSTRAINTS. Each constraint is {{left_operand, operator, right_operand, unit}}:
+    - left_operand from: {left_operands}
+    - operator from: {operators}
+    - right_operand copied from the text (dates as YYYY-MM-DD; amounts as digits with the currency in unit).
+
+    RELATIONSHIPS. "relation" is one of: {relations}. Use the active direction (A funds B, not B funded_by A).
+
+    RECITALS. Numbered paragraphs after "Whereas:" are recitals: they explain, they do not bind. Do NOT extract duties or prohibitions from recitals. If you extract a rule from a recital, set provision to "recital".
+
+    GROUNDING.
+    1. Extract only rights, prohibitions and duties explicitly stated in the fragment.
+    2. Do not invent facts, parties, dates, amounts or currencies not present in the text.
+    3. Example instances must quote the text exactly.
 
   # Contains the text of the document, each chunk will produce a different prompt
   user_prompt_template: |
     Analyze the following EUR-Lex legal text fragment and extract an ODRL-aligned ontology.
 
-    Return ONLY a single valid JSON object following EXPLICITLY this structure:
+    Return ONLY a single valid JSON object with this structure (values are illustrative):
 
     {{
-      "ontology_name": "Unique Short Name",
-      "description": "Short explanation of this ontology coverage",
+      "ontology_name": "ShortUniqueName",
+      "description": "Short explanation of this ontology's coverage",
       "odrl_alignment": {{
-        "core_entities": ["Asset", "Party", "Permission", "Duty", "Constraint"],
-        "extensions": ["LegalInstrument", "Regulation"]
+        "core_entities": ["Asset", "Party", "Permission", "Prohibition", "Duty", "Constraint"],
+        "extensions": ["NameOfEachLegal_extensionClass"]
       }},
       "classes": [
-        {{
-          "name": "ClassName",
-          "type": "ODRL_core",
-          "description": "Definition of class"
-        }}
+        {{"name": "European_Commission", "type": "Party", "is_a": "EUInstitution", "kind": "individual", "description": "Definition grounded in the text"}},
+        {{"name": "FinancialContribution", "type": "Asset", "is_a": "FinancialInstrument", "kind": "class", "description": "Definition grounded in the text"}}
       ],
       "relationships": [
-        {{
-          "source": "ClassNameA",
-          "relation": "appliesTo",
-          "target": "ClassNameB",
-          "description": "Relationship description"
-        }}
+        {{"source": "ClassOrIndividualA", "relation": "funds", "target": "ClassOrIndividualB", "description": "Relationship description"}}
       ],
       "rights_model": {{
         "permissions": [
-          {{
-            "action": "action_name_in_snake_case",
-            "asset": "TargetAsset",
-            "party": "TargetParty",
-            "constraints": [
-              {{
-                "name": "ConstraintType",
-                "value": "ConstraintValue"
-              }}
-            ]
-          }}
+          {{"action": "provide", "action_label": "provide_financial_contribution", "party": "PartyName", "assigner": "", "asset": "AssetName", "provision": "article",
+            "constraints": [{{"left_operand": "payAmount", "operator": "lteq", "right_operand": "50000000", "unit": "EUR"}}]}}
         ],
+        "prohibitions": [],
         "duties": [
-          {{
-            "action": "mandatory_action_in_snake_case",
-            "party": "ResponsibleParty",
-            "constraints": []
-          }}
+          {{"action": "submit", "action_label": "submit_application", "party": "PartyName", "assigner": "", "asset": "AssetName", "provision": "article",
+            "constraints": [{{"left_operand": "dateTime", "operator": "lteq", "right_operand": "2019-12-31", "unit": ""}}]}}
         ]
       }},
       "legal_patterns": [
-        {{
-          "pattern_name": "PatternName",
-          "description": "Description of the legal interaction",
-          "entities_involved": ["Entity1", "Entity2"]
-        }}
+        {{"pattern_name": "PatternName", "description": "Description of the legal interaction", "entities_involved": ["Entity1", "Entity2"]}}
       ],
       "example_instances": [
-        {{
-          "entity": "EntityName",
-          "example_value": "Exact textual reference from document",
-          "source_context": "Exact snippet from provided text"
-        }}
+        {{"entity": "EntityName", "example_value": "Short value copied from the text", "source_context": "The sentence it comes from, copied from the text"}}
       ]
     }}
 

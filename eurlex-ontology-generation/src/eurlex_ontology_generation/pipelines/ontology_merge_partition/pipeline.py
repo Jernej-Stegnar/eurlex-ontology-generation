@@ -15,6 +15,8 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs=[
                     "params:ontology_merge_partition.part_id",
                     "params:ontology_merge_partition.revisions_directory",
+                    "params:ontology_merge_partition.reviews_directory",
+                    "params:ontology_merge_partition.exclude_unapproved",
                 ],
                 outputs="partition_revisions",
                 name="load_partition_revisions_node",

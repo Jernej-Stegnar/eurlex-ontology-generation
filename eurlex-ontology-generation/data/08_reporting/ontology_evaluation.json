@@ -1,0 +1,503 @@
+{
+  "ontologies": {
+    "eurlex_odrl_ontology_merged.json": {
+      "size": {
+        "classes": 218,
+        "individuals": 0,
+        "relationships": 68,
+        "permissions": 288,
+        "prohibitions": 0,
+        "duties": 190
+      },
+      "long_tail": {
+        "pct_entities_single_document": 85.8
+      },
+      "typing": {
+        "type_values": {
+          "Asset": 51,
+          "Legal_extension": 82,
+          "Party": 85
+        },
+        "known_entities": 39,
+        "pct_known_entities_correct_type": 79.5,
+        "country_type_values": {
+          "Party": 16,
+          "Legal_extension": 3
+        },
+        "pct_entities_with_is_a": 0.0
+      },
+      "kind": {
+        "pct_known_individuals_as_individuals": 0.0,
+        "pct_entities_with_kind": 0.0
+      },
+      "leakage": {
+        "count": 9,
+        "names": [
+          "Assignee",
+          "AuditDuty",
+          "AuditPermission",
+          "AuditPermissionTarget",
+          "FundamentalRightsHolder",
+          "LegalObligationHolder",
+          "Notification_Obligation",
+          "PRIMA_Funding_Access_Assignee",
+          "PRIMA_Funding_Access_RightsHolder"
+        ]
+      },
+      "actions": {
+        "rules": 478,
+        "distinct": 313,
+        "pct_rules_controlled": 2.5,
+        "pct_distinct_used_once": 73.8
+      },
+      "constraints": {
+        "total": 380,
+        "pct_structured": 0.0,
+        "pct_controlled_left_operand": 0.0,
+        "distinct_names": 279
+      },
+      "relations": {
+        "distinct": 41,
+        "pct_controlled": 32.4
+      },
+      "consistency": {
+        "rules_party_not_party": 0,
+        "rules_asset_is_party": 86,
+        "undefined_references": 0,
+        "isolated_entities": 24
+      },
+      "linking": {
+        "pct_entities_with_identifier": 0.0
+      },
+      "gold": {
+        "gold_entities": 26,
+        "found_in_ontology": 26,
+        "type_accuracy": 46.2,
+        "is_a_accuracy": 0.0,
+        "kind_accuracy": 0.0,
+        "errors": [
+          {
+            "name": "European_Commission",
+            "expected": {
+              "type": "Party",
+              "is_a": "EUInstitution",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Party",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Council",
+            "expected": {
+              "type": "Party",
+              "is_a": "EUInstitution",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Party",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "European_Parliament",
+            "expected": {
+              "type": "Party",
+              "is_a": "EUInstitution",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Party",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Latvia",
+            "expected": {
+              "type": "Party",
+              "is_a": "Country",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Legal_extension",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Cyprus",
+            "expected": {
+              "type": "Party",
+              "is_a": "Country",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Legal_extension",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Greece",
+            "expected": {
+              "type": "Party",
+              "is_a": "Country",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Party",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "United_Kingdom",
+            "expected": {
+              "type": "Party",
+              "is_a": "Country",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Legal_extension",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "IMF",
+            "expected": {
+              "type": "Party",
+              "is_a": "InternationalOrganisation",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Legal_extension",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "EGF",
+            "expected": {
+              "type": "Asset",
+              "is_a": "Fund",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Party",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "European_Union_Solidarity_Fund",
+            "expected": {
+              "type": "Asset",
+              "is_a": "Fund",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Party",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Flexibility_Instrument",
+            "expected": {
+              "type": "Asset",
+              "is_a": "FinancialInstrument",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Asset",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "OLAF",
+            "expected": {
+              "type": "Party",
+              "is_a": "EUBody",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Party",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Member_State",
+            "expected": {
+              "type": "Party",
+              "is_a": "Country",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Party",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Decision",
+            "expected": {
+              "type": "Asset",
+              "is_a": "LegalAct",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Asset",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Regulation",
+            "expected": {
+              "type": "Asset",
+              "is_a": "LegalAct",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Asset",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Application",
+            "expected": {
+              "type": "Asset",
+              "is_a": "Document",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Legal_extension",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "FinancialContribution",
+            "expected": {
+              "type": "Asset",
+              "is_a": "FinancialInstrument",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Legal_extension",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "MacroFinancialAssistance",
+            "expected": {
+              "type": "Asset",
+              "is_a": "FinancialInstrument",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Asset",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Earthquake",
+            "expected": {
+              "type": "Legal_extension",
+              "is_a": "Event",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Legal_extension",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Notification",
+            "expected": {
+              "type": "Asset",
+              "is_a": "Document",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Legal_extension",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Spectrum",
+            "expected": {
+              "type": "Asset",
+              "is_a": "Resource",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Legal_extension",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "ThirdCountry",
+            "expected": {
+              "type": "Party",
+              "is_a": "Country",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Legal_extension",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Cyprus_Government",
+            "expected": {
+              "type": "Party",
+              "is_a": "PublicAuthority",
+              "kind": "individual"
+            },
+            "got": {
+              "type": "Party",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "EGF_Mobilization",
+            "expected": {
+              "type": "Legal_extension",
+              "is_a": "Procedure",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Asset",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "Stakeholder",
+            "expected": {
+              "type": "Party",
+              "is_a": "PartyRole",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Legal_extension",
+              "is_a": null,
+              "kind": null
+            }
+          },
+          {
+            "name": "IndependentExperts",
+            "expected": {
+              "type": "Party",
+              "is_a": "NaturalPerson",
+              "kind": "class"
+            },
+            "got": {
+              "type": "Legal_extension",
+              "is_a": null,
+              "kind": null
+            }
+          }
+        ]
+      }
+    },
+    "eurlex_odrl_ontology_refined.json": {
+      "size": {
+        "classes": 164,
+        "individuals": 42,
+        "relationships": 86,
+        "permissions": 274,
+        "prohibitions": 0,
+        "duties": 179
+      },
+      "long_tail": {
+        "pct_entities_single_document": 84.5
+      },
+      "typing": {
+        "type_values": {
+          "Asset": 80,
+          "Legal_extension": 37,
+          "Party": 89
+        },
+        "known_entities": 36,
+        "pct_known_entities_correct_type": 100.0,
+        "country_type_values": {
+          "Party": 19
+        },
+        "pct_entities_with_is_a": 100.0
+      },
+      "kind": {
+        "pct_known_individuals_as_individuals": 100.0,
+        "pct_entities_with_kind": 100.0
+      },
+      "leakage": {
+        "count": 0,
+        "names": []
+      },
+      "actions": {
+        "rules": 453,
+        "distinct": 54,
+        "pct_rules_controlled": 95.8,
+        "pct_distinct_used_once": 24.1
+      },
+      "constraints": {
+        "total": 358,
+        "pct_structured": 100.0,
+        "pct_controlled_left_operand": 43.0,
+        "distinct_names": 12
+      },
+      "relations": {
+        "distinct": 19,
+        "pct_controlled": 96.5
+      },
+      "consistency": {
+        "rules_party_not_party": 24,
+        "rules_asset_is_party": 42,
+        "undefined_references": 0,
+        "isolated_entities": 20
+      },
+      "linking": {
+        "pct_entities_with_identifier": 9.2
+      },
+      "gold": {
+        "gold_entities": 26,
+        "found_in_ontology": 26,
+        "type_accuracy": 100.0,
+        "is_a_accuracy": 100.0,
+        "kind_accuracy": 100.0,
+        "errors": []
+      }
+    }
+  },
+  "review": {
+    "per_round": {
+      "0": {
+        "chunks": 230,
+        "approved": 0,
+        "pct_approved": 0.0,
+        "mean_overall_score": 2.71
+      }
+    },
+    "final": {
+      "chunks": 230,
+      "pct_approved_latest_round": 0.0,
+      "chunks_with_reviewed_revision": 0
+    }
+  }
+}

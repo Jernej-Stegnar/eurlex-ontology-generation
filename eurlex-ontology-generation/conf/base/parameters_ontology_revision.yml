@@ -40,11 +40,19 @@ ontology_revision:
 
     CRITICAL REVISION RULES:
     1. APPLY ALL AMENDMENTS: You MUST apply every item listed in "suggested_amendments" from the review. Do not ignore any of them.
-    2. FIX WEAKNESSES: Address every issue listed in "weaknesses" (e.g. wrong ODRL_core/Legal_extension classification, empty rights_model, missing duties/permissions).
-    3. ADD MISSING CONCEPTS: Every concept listed in "missing_concepts" MUST be added BOTH as a string in "odrl_alignment.extensions" AND as a full entry in "classes" with its own "name", "type", and "description" grounded in the source text.
+    2. FIX WEAKNESSES: Address every issue listed in "weaknesses" (e.g. wrong type/is_a/kind, ODRL structure used as a class name, empty rights_model, missing duties/permissions/prohibitions).
+    3. ADD MISSING CONCEPTS: Every concept listed in "missing_concepts" MUST be added BOTH as a string in "odrl_alignment.extensions" AND as a full entry in "classes" with its own "name", "type", "is_a", "kind" and "description" grounded in the source text.
     4. REMOVE HALLUCINATIONS: Remove or correct every concept listed in "hallucinations" and "unsupported_concepts". Do not keep unsupported claims.
-    5. VALID CLASS TYPES: The "type" field of every entry in "classes" MUST be either one of the ODRL core types (Asset, Party, RightsHolder, Permission, Prohibition, Duty, Constraint) or exactly the string "Legal_extension". NEVER invent a custom type such as "Rate", "Currency", or "Tariff" as a "type" value — those are concept names, not ODRL types. If a concept like "Rate" or "Currency" needs its own class, its "type" must be "Legal_extension", and "Rate"/"Currency" is its "name".
-    If a class in the Candidate Ontology has an invalid "type" (for example "ODRL_core"), you MUST replace it with the most appropriate ODRL core type (Asset, Party, RightsHolder, Permission, Prohibition, Duty, Constraint) or with "Legal_extension" if none fits. This rule takes precedence over rule 6.
+    5. CONTROLLED VOCABULARY:
+    - Class "type" is one of {core_types}. "is_a" is exactly one parent from this upper ontology (its group must match "type"):
+    {upper_ontology}
+    - "kind" is "individual" for one named thing (a country, an institution, a named fund or programme) and "class" for a kind of thing.
+    - Never use Permission, Prohibition, Duty, Constraint, Assignee or Target in a class name: express such content as a rule in rights_model.
+    - Rule "action" is one canonical verb from: {actions} (or "other"); keep the original wording in "action_label".
+    - Constraints are {{left_operand, operator, right_operand, unit}} with left_operand from: {left_operands}; operator from: {operators}.
+    - Relationship "relation" is one of: {relations}.
+    - Do not keep duties or prohibitions taken from recitals (paragraphs after "Whereas:").
+    Invalid values are replaced in code after you answer, so choose the closest valid value rather than inventing one.
     6. PRESERVE VALID CONTENT: Keep every class, relationship, and instance from the Candidate Ontology that was NOT flagged as wrong. Do not discard correct information.
     7. SCHEMA CONSTRAINT: The corrected ontology output MUST contain EXACTLY these top-level keys, nothing more and nothing less: "ontology_name", "description", "odrl_alignment", "classes", "relationships", "rights_model", "legal_patterns", "example_instances". NEVER include review-related fields such as "approved", "revision_required", "strengths", "weaknesses", "missing_concepts", "overall_score" in the output ontology.
     8. GROUNDING CONSTRAINT: Do not invent facts, entities, dates, currencies, or values that are not explicitly present in the provided source text. If the source text uses "ECU", do NOT convert or add "EUR" or any other currency not mentioned in the text. Never infer a modern currency (e.g. EUR) just because the topic is money — use only the currency actually named in the text.
@@ -53,7 +61,7 @@ ontology_revision:
     IMPORTANT OUTPUT RULES:
     - Return ONLY a single valid JSON object.
     - Do NOT wrap JSON inside markdown blocks (do not use ```json).
-    - NEVER return an empty JSON object like {} under any circumstances. Fill every field strictly.
+    - NEVER return an empty JSON object like {{}} under any circumstances. Fill every field strictly.
 
 
   user_prompt_template: |
@@ -76,42 +84,43 @@ ontology_revision:
       "ontology_name": "...",
       "description": "...",
       "odrl_alignment": {{
-        "core_entities": ["Asset", "Party", "Permission", "Duty", "Constraint"],
-        "extensions": ["ExampleConcept"]
+        "core_entities": ["Asset", "Party", "Permission", "Prohibition", "Duty", "Constraint"],
+        "extensions": ["ExampleProcedure"]
       }},
       "classes": [
-        {{
-          "name": "ExampleConcept",
-          "type": "Legal_extension",
-          "description": "..."
-        }}
+        {{"name": "European_Commission", "type": "Party", "is_a": "EUInstitution", "kind": "individual", "description": "..."}},
+        {{"name": "ExampleProcedure", "type": "Legal_extension", "is_a": "Procedure", "kind": "class", "description": "..."}}
       ],
       "relationships": [
-        {{
-          "source": "...",
-          "relation": "...",
-          "target": "..."
-        }}
+        {{"source": "...", "relation": "governs", "target": "...", "description": "..."}}
       ],
       "rights_model": {{
         "permissions": [],
-        "duties": []
+        "prohibitions": [],
+        "duties": [
+          {{"action": "submit", "action_label": "submit_application", "party": "...", "assigner": "", "asset": "...", "provision": "article",
+            "constraints": [{{"left_operand": "dateTime", "operator": "lteq", "right_operand": "2019-12-31", "unit": ""}}]}}
+        ]
       }},
       "legal_patterns": [
-        {{
-          "pattern_name": "...",
-          "description": "...",
-          "entities_involved": []
-        }}
+        {{"pattern_name": "...", "description": "...", "entities_involved": []}}
       ],
       "example_instances": [
-        {{
-          "entity": "...",
-          "example_value": "...",
-          "source_context": "..."
-        }}
+        {{"entity": "...", "example_value": "...", "source_context": "..."}}
       ]
     }}
+
+  # Re-review loop: the reviews file keeps one row per (chunk, round); the
+  # revision reads the latest round. The orchestrator sets this per call.
+  round: 1
+
+  # Deterministic post-processing after the LLM (utils/ontology_normalize.py):
+  # leakage removal, gazetteer/upper-ontology typing, class vs individual,
+  # canonical actions, structured constraints, canonical relations,
+  # referential closure. Strongly recommended; set false only to measure the
+  # LLM revision on its own.
+  normalize_after_revision: true
+  vocabulary_path: null
 
   # Parameters for the new validation node
   # Top-level keys that a valid ontology MUST have (exactly these, no more/less)
@@ -126,14 +135,10 @@ ontology_revision:
     - example_instances
 
   # ODRL core types that are valid alongside "Legal_extension" for a class's "type" field
+  # Permission/Prohibition/Duty/Constraint are rule structure, not class types.
   valid_odrl_core_types:
     - Asset
     - Party
-    - RightsHolder
-    - Permission
-    - Prohibition
-    - Duty
-    - Constraint
 
   # Terms that should never appear as a "currency" value unless present in
   # the source text — used as a lightweight grounding/hallucination check.

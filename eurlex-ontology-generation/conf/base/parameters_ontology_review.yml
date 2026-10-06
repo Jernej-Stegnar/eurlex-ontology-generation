@@ -25,6 +25,13 @@ ontology_review:
   # Persistent directory containing ontology-generation results.
   candidates_directory: data/04_feature/ontology_candidates
 
+  # Review loop. round 0 reviews the generator's candidates; the batch
+  # orchestrator then sets round=1..N and source=revisions to re-review each
+  # revision until it is approved or the round budget is spent.
+  round: 0
+  source: candidates           # candidates | revisions
+  revisions_directory: data/04_feature/ontology_revisions
+
   # Persistent directory containing ontology-review results.
   output_directory: data/04_feature/ontology_reviews
 
@@ -34,6 +41,9 @@ ontology_review:
     min_odrl_compliance: 4
     max_verified_weaknesses: 1   # weaknesses that survived code verification
     max_warnings: 2              # automatic warnings; any automatic error blocks approval
+    # code: findings sharing a code count once (ten mistyped classes are one
+    #       problem). finding: every finding counts (original behaviour).
+    count_by: code
 
   system_prompt: |
     You are an expert reviewer of ontologies extracted from EUR-Lex legal texts and aligned to ODRL 2.2.
@@ -46,7 +56,7 @@ ontology_review:
     2. Read the candidate ontology carefully before writing. Never claim that something is missing or empty unless you have checked that it really is.
     3. AUTOMATIC CHECKS are computed by code and are reliable. Do not contradict them and do not repeat them as weaknesses: use "weaknesses" for OTHER problems you find.
     4. Every weakness MUST have: "claim" (one sentence); "json_path" (dot path in the candidate ontology, e.g. rights_model.duties[0].action or classes[0].type; empty string only if it concerns the text alone); "quote" (an exact substring copied from the value found AT that json_path, or from the source text if json_path is empty); "suggested_fix" (one concrete change). Weaknesses whose path or quote cannot be verified are discarded together with their fix.
-    5. Class "type" convention: "ODRL_core" is ONLY for ODRL core concepts (Policy, Rule, Asset, Party, Action, Permission, Prohibition, Duty, Constraint). Domain concepts (instruments, funds, programmes, regulations, decisions, measures) must be "Legal_extension". Institutions and bodies (Commission, Council, Parliament, Union) are Parties: model them as Party subclasses, never as Legal_extension.
+    5. Class convention: "type" is Party (actors), Asset (things acted upon: legal acts, funds, financial instruments, programmes, resources, documents) or Legal_extension (procedures, measures, events, sectors, other concepts). "is_a" is the upper-ontology parent. "kind" is "individual" for one named thing (a country, an institution, a named fund) and "class" for a kind of thing. Class names must never contain ODRL structure words (Permission, Prohibition, Duty, Constraint, Assignee, Target): those belong in rights_model.
     6. "missing_concepts": only concepts clearly supported by the text AND not already among the ontology's classes. Do not list words that are just part of an existing class name.
     7. "hallucinations": classes, actions, parties or constraint values that are IN THE ONTOLOGY and have NO support in the text. "unsupported_concepts": items that are IN THE ONTOLOGY and only weakly supported. Never list here things that are absent from the ontology (those are missing concepts), nor entities that are supported by the text but merely undefined (automatic checks cover them).
     8. Relation names, pattern names, the ontology name and descriptions are modelling vocabulary: they do not need to appear in the text, so do not report them.

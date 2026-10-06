@@ -9,6 +9,10 @@ import math
 import re
 from typing import Any
 
+from ...utils.entity_linking import load_gazetteer
+from ...utils.ontology_normalize import type_entity
+from ...utils.vocabulary import OTHER_ACTION, load_vocabulary
+
 # Keep this list aligned with the convention used in the ontology-generation prompt (see the system prompt of the judge)
 ODRL_CORE_NAMES = {
     "Policy",
@@ -36,11 +40,20 @@ VOCABULARY_KEYS = {"relation", "pattern_name", "ontology_name", "description"}
 
 # Finding codes that count against ODRL compliance.
 ODRL_CODES = {
-    "misclassified_core_class",
+    "misclassified_core_class",   # legacy "ODRL_core" type
+    "invalid_class_type",
+    "metamodel_leakage",
+    "gazetteer_type_mismatch",
+    "rule_slot_type",
     "rights_model_empty",
     "placeholder_party",
     "undefined_entities",
 }
+
+# Severity 'info' findings are reported (and feed the metrics) but never
+# affect scores or approval: they describe vocabulary drift that the
+# deterministic post-processor fixes on its own.
+INFO = "info"
 
 # Words that mark a name as an actor (Party) or as a domain concept
 # (Legal_extension). Domain words win when both appear
@@ -174,7 +187,7 @@ def _collect_entity_references(onto: dict) -> set[str]:
         refs.update([rel.get("source"), rel.get("target")])
 
     for _, rule in _iter_rules(onto):
-        refs.update([rule.get("asset"), rule.get("party")])
+        refs.update([rule.get("asset"), rule.get("party"), rule.get("assigner")])
 
     for pattern in _dicts(onto.get("legal_patterns")):
         involved = pattern.get("entities_involved")
@@ -265,21 +278,60 @@ def run_deterministic_checks(
             )
         )
 
-    # 3. Domain classes typed as ODRL_core
+    # 3. Class-level checks against the controlled vocabulary and gazetteer
+    vocab = load_vocabulary()
+    gazetteer = load_gazetteer()
+    class_type = {}
     for cls in classes:
         name = cls.get("name")
-        if cls.get("type") == "ODRL_core" and name not in ODRL_CORE_NAMES:
-            new_type = _guess_entity_type(name)
-            findings.append(
-                _finding(
-                    "misclassified_core_class",
-                    "warning",
-                    f"Class '{name}' is typed ODRL_core but is not an ODRL "
-                    f"core concept (expected {new_type}).",
-                    f"Change the type of class '{name}' to {new_type}.",
-                    data={"class": name, "new_type": new_type},
-                )
-            )
+        if not isinstance(name, str) or not name:
+            continue
+        declared = cls.get("type")
+        class_type[name] = declared
+
+        leak = vocab.metamodel_leakage(name)
+        if leak:
+            findings.append(_finding(
+                "metamodel_leakage", "warning",
+                f"Class {leak}: ODRL structure must be expressed as a rule, not as a class.",
+                f"Remove class '{name}' and express it as a permission, prohibition or duty in rights_model.",
+                data={"class": name},
+            ))
+            continue
+
+        expected = type_entity(name, str(cls.get("description") or ""), vocab, gazetteer,
+                               declared, cls.get("is_a"))
+        if declared == "ODRL_core" and name not in ODRL_CORE_NAMES:
+            findings.append(_finding(
+                "misclassified_core_class", "warning",
+                f"Class '{name}' is typed ODRL_core but is not an ODRL "
+                f"core concept (expected {expected['type']}).",
+                f"Change the type of class '{name}' to {expected['type']}.",
+                data={"class": name, "new_type": expected["type"], "is_a": expected["is_a"]},
+            ))
+        elif declared not in vocab.core_types:
+            findings.append(_finding(
+                "invalid_class_type", "warning",
+                f"Class '{name}' has type '{declared}', which is not one of {vocab.core_types} "
+                f"(expected {expected['type']}).",
+                f"Change the type of class '{name}' to {expected['type']}.",
+                data={"class": name, "new_type": expected["type"], "is_a": expected["is_a"]},
+            ))
+        elif expected.get("type_source") == "gazetteer" and (
+                declared != expected["type"] or cls.get("kind") == "class"):
+            findings.append(_finding(
+                "gazetteer_type_mismatch", "warning",
+                f"'{name}' is a known {expected['is_a']} individual (type {expected['type']}), "
+                f"but the ontology declares type {declared}, kind {cls.get('kind')}.",
+                f"Set '{name}' to type {expected['type']}, is_a {expected['is_a']}, kind individual.",
+                data={"class": name, "new_type": expected["type"], "is_a": expected["is_a"],
+                      "kind": "individual"},
+            ))
+        if cls.get("is_a") is None or cls.get("kind") is None:
+            findings.append(_finding(
+                "missing_is_a_or_kind", INFO,
+                f"Class '{name}' has no is_a/kind (legacy schema).",
+            ))
 
     # 4. Rule-level checks: placeholders, ungrounded actions and values
     for kind, rule in _iter_rules(onto):
@@ -297,15 +349,48 @@ def run_deterministic_checks(
                 )
             )
 
+        asset = rule.get("asset")
+        if isinstance(party, str) and class_type.get(party) not in (None, "Party", "RightsHolder", "ODRL_core"):
+            findings.append(_finding(
+                "rule_slot_type", "warning",
+                f"{kind}: party '{party}' is typed {class_type.get(party)}, not Party.",
+                f"Use a Party as the party of this rule, or retype '{party}'.",
+                data={"rule_kind": kind, "party": party},
+            ))
+        if isinstance(asset, str) and class_type.get(asset) == "Party":
+            findings.append(_finding(
+                "rule_slot_type", "warning",
+                f"{kind}: asset '{asset}' is typed Party; an asset is what the action applies to.",
+                f"Use an Asset or Legal_extension as the asset of this rule, or retype '{asset}'.",
+                data={"rule_kind": kind, "asset": asset},
+            ))
+        if rule.get("provision") == "recital" and kind in ("duties", "prohibitions"):
+            findings.append(_finding(
+                "rule_from_recital", "warning",
+                f"{kind}: rule '{rule.get('action_label') or rule.get('action')}' comes from a recital, "
+                "which is not binding.",
+                "Remove duties and prohibitions taken from recitals, or ground them in an article.",
+                data={"rule_kind": kind, "action": rule.get("action")},
+            ))
+
         action = rule.get("action")
-        if isinstance(action, str):
-            stems = [t[:5] for t in action.lower().split("_") if len(t) > 4]
+        if isinstance(action, str) and action not in vocab.actions:
+            norm = vocab.normalize_action(action, rule.get("action_label"))
+            if not norm["controlled"] or action == OTHER_ACTION:
+                findings.append(_finding(
+                    "uncontrolled_action", INFO,
+                    f"{kind}: action '{rule.get('action_label') or action}' is not in the controlled action vocabulary.",
+                ))
+        # ground the wording the generator used, not the canonical verb
+        grounded_on = rule.get("action_label") or action
+        if isinstance(grounded_on, str) and grounded_on != OTHER_ACTION:
+            stems = [t[:5] for t in grounded_on.lower().split("_") if len(t) > 4]
             if stems and not any(stem in text_lower for stem in stems):
                 findings.append(
                     _finding(
                         "ungrounded_action",
                         "error",
-                        f"{kind}: action '{action}' has no support in the text "
+                        f"{kind}: action '{grounded_on}' has no support in the text "
                         "(none of its words appear).",
                         f"Remove action '{action}' or replace it with an "
                         "action expressed in the text.",
@@ -314,7 +399,13 @@ def run_deterministic_checks(
                 )
 
         for constraint in _dicts(rule.get("constraints")):
-            value = constraint.get("value")
+            if "left_operand" not in constraint:
+                findings.append(_finding(
+                    "unstructured_constraint", INFO,
+                    f"{kind}: constraint '{constraint.get('name')}' is free text, not "
+                    "left_operand/operator/right_operand.",
+                ))
+            value = constraint.get("right_operand", constraint.get("value"))
             if (
                 isinstance(value, (str, int, float))
                 and str(value).strip()
@@ -324,14 +415,23 @@ def run_deterministic_checks(
                     _finding(
                         "ungrounded_value",
                         "warning",
-                        f"{kind}: constraint '{constraint.get('name')}' has "
+                        f"{kind}: constraint '{constraint.get('name') or constraint.get('left_operand')}' has "
                         f"value '{value}' which does not appear in the text.",
-                        f"Check constraint '{constraint.get('name')}': its "
+                        f"Check constraint '{constraint.get('name') or constraint.get('left_operand')}': its "
                         "value must be taken from the text.",
                     )
                 )
 
-    # 5. Example instances that just copy their own context
+    # 5. Relations outside the controlled set
+    for rel in _dicts(onto.get("relationships")):
+        _, _, _, controlled = vocab.normalize_relation(rel.get("relation"), rel.get("source"), rel.get("target"))
+        if not controlled:
+            findings.append(_finding(
+                "uncontrolled_relation", INFO,
+                f"Relation '{rel.get('relation')}' is not in the controlled relation vocabulary.",
+            ))
+
+    # 6. Example instances that just copy their own context
     for instance in _dicts(onto.get("example_instances")):
         example = instance.get("example_value")
         context = instance.get("source_context")
@@ -363,9 +463,11 @@ def run_deterministic_checks(
 # Render findings for the judge prompt
 def format_findings(findings: list[dict]) -> str:
     
-    if not findings:
+    # info findings are fixed in code later; keep them out of the judge prompt
+    shown = [f for f in findings if f["severity"] != INFO]
+    if not shown:
         return "(none)"
-    return "\n".join(f"- [{f['severity']}] {f['message']}" for f in findings)
+    return "\n".join(f"- [{f['severity']}] {f['message']}" for f in shown)
 
 
 # Resolve 'a.b[0].c' or 'a.b.0.c' inside a parsed JSON object
@@ -536,10 +638,20 @@ overall: 5 minus up to 3 for errors and up to 2 for (warnings + grounded
 weaknesses, two per point). odrl_compliance: 5 minus one per ODRL-related
 finding (max 4). Provisional: tune together with approval_thresholds.
 """
-def compute_scores(findings: list[dict], n_grounded_weaknesses: int) -> tuple[int, int]:
-    
+def count_warnings(findings: list[dict], count_by: str = "code") -> int:
+    """Warnings counted per distinct code (one root cause = one penalty) or per finding."""
+    warnings = [f for f in findings if f["severity"] == "warning"]
+    return len({f["code"] for f in warnings}) if count_by == "code" else len(warnings)
+
+
+def compute_scores(findings: list[dict], n_grounded_weaknesses: int,
+                   count_by: str = "code") -> tuple[int, int]:
+    """count_by='code': ten mistyped classes are one problem (the generator
+    misunderstood typing), not ten. 'finding' reproduces the original scoring."""
     errors = sum(1 for f in findings if f["severity"] == "error")
-    warnings = sum(1 for f in findings if f["severity"] == "warning")
+    warnings = count_warnings(findings, count_by)
     overall = 5 - min(3, errors) - min(2, math.ceil((warnings + n_grounded_weaknesses) / 2))
-    odrl = 5 - min(4, sum(1 for f in findings if f["code"] in ODRL_CODES))
+    odrl_findings = [f for f in findings if f["code"] in ODRL_CODES and f["severity"] != INFO]
+    n_odrl = len({f["code"] for f in odrl_findings}) if count_by == "code" else len(odrl_findings)
+    odrl = 5 - min(4, n_odrl)
     return max(1, overall), max(1, odrl)

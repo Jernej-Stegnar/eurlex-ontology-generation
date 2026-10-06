@@ -1,0 +1,223 @@
+# Controlled vocabulary for the EurLex ODRL ontology.
+#
+# Single source of truth for:
+#   - the class types a generator may use (core_types)
+#   - the upper ontology every class must hang under (upper_ontology)
+#   - the canonical action verbs and their ODRL parents (actions)
+#   - the structured ODRL constraint vocabulary (constraints)
+#   - the canonical relation set and inverses (relations)
+#   - ODRL meta-model terms that must never become domain classes (reserved_terms)
+#
+# Prompts, JSON schemas, review checks, the revision post-processor and the
+# refinement pipeline all read this file, so a change here propagates everywhere.
+
+core_types:
+  - Party
+  - Asset
+  - Legal_extension
+
+# Upper ontology. Every class or individual gets exactly one `is_a` from this list.
+# `keywords` are head nouns used by the deterministic fallback typer (last token of a name).
+upper_ontology:
+  # ---- Party ----
+  EUInstitution:
+    core_type: Party
+    description: One of the institutions of the European Union (Parliament, Council, Commission, European Council, Court of Justice, Court of Auditors, European Central Bank).
+    keywords: [institution]
+  EUBody:
+    core_type: Party
+    description: An EU agency, office, service or advisory body that is not an institution.
+    keywords: [agency, office, service, secretariat, board, committee, ombudsman]
+  Country:
+    core_type: Party
+    description: A sovereign state, whether an EU Member State or a third country.
+    keywords: [country, state, republic, kingdom]
+  InternationalOrganisation:
+    core_type: Party
+    description: An international or supranational organisation.
+    keywords: [organisation, organization, union]
+  PublicAuthority:
+    core_type: Party
+    description: A national, regional or local public authority, ministry, regulator or government.
+    keywords: [authority, ministry, government, regulator, administration, coordinator]
+  Undertaking:
+    core_type: Party
+    description: A company, operator, provider or other economic actor.
+    keywords: [undertaking, company, operator, provider, enterprise, producer, manufacturer, firm, airline, supplier, contractor]
+  NaturalPerson:
+    core_type: Party
+    description: An individual human being or a category of individuals.
+    keywords: [person, individual, worker, citizen, people, consumer, student, learner, expert]
+  PartyRole:
+    core_type: Party
+    description: A role a party plays in a legal relation (applicant, beneficiary, recipient, participant, user, stakeholder).
+    keywords: [applicant, beneficiary, recipient, participant, user, stakeholder, holder, member, partner, actor, assignee, guarantor, trustee]
+  # ---- Asset ----
+  LegalAct:
+    core_type: Asset
+    description: A legal act or legal instrument (regulation, directive, decision, treaty, framework).
+    keywords: [regulation, directive, decision, act, treaty, law, legislation, framework, clause]
+  Agreement:
+    core_type: Asset
+    description: An agreement, contract, memorandum, convention or protocol between parties.
+    keywords: [agreement, contract, memorandum, convention, protocol, arrangement, arrangements]
+  Fund:
+    core_type: Asset
+    description: A fund or financing facility.
+    keywords: [fund, facility, reserve]
+  FinancialInstrument:
+    core_type: Asset
+    description: A financial instrument or financial resource (grant, loan, guarantee, appropriation, contribution, budget).
+    keywords: [instrument, loan, grant, guarantee, appropriation, appropriations, contribution, assistance, budget, payment, financing, funding, amount, resources]
+  Programme:
+    core_type: Asset
+    description: A programme, initiative, strategy, plan or roadmap.
+    keywords: [programme, program, initiative, strategy, plan, roadmap, year, agenda]
+  Resource:
+    core_type: Asset
+    description: A non-financial resource subject to legal provisions (spectrum, data, network, platform, tool, territory, site, product).
+    keywords: [spectrum, band, frequency, data, information, network, platform, tool, territory, site, product, products, goods, service, services, heritage]
+  Document:
+    core_type: Asset
+    description: A procedural document (application, request, notification, report, proposal, opinion).
+    keywords: [application, request, notification, report, proposal, opinion, statement, document, list, register, certificate]
+  # ---- Legal_extension ----
+  Procedure:
+    core_type: Legal_extension
+    description: A legal or administrative procedure or process (mobilisation, assessment, monitoring, audit, consultation).
+    keywords: [procedure, process, mobilisation, mobilization, assessment, evaluation, monitoring, audit, review, consultation, cooperation, implementation, management, validation, verification]
+  Measure:
+    core_type: Legal_extension
+    description: A measure, action, reform or policy.
+    keywords: [measure, measures, action, actions, reform, reforms, policy, intervention]
+  Event:
+    core_type: Legal_extension
+    description: An event or situation that triggers legal effects (disaster, crisis, redundancy).
+    keywords: [disaster, earthquake, flood, flooding, storm, crisis, fire, drought, redundancy, redundancies, emergency, event]
+  Sector:
+    core_type: Legal_extension
+    description: An economic sector, industry or field of activity.
+    keywords: [sector, sectors, industry, activities, activity, market, field]
+  Concept:
+    core_type: Legal_extension
+    description: Any other legal concept not covered above (use sparingly).
+    keywords: []
+
+# Canonical action verbs. `included_in` is the ODRL 2.2 parent action
+# (odrl:use, odrl:transfer or a Common Vocabulary action). Synonyms are
+# snake_case token sequences matched at the start of a free-text action.
+actions:
+  adopt:      {included_in: use, synonyms: [adopt, enact, establish, lay_down, set_up, create, issue]}
+  amend:      {included_in: modify, synonyms: [amend, modify, revise, update, change, adapt]}
+  repeal:     {included_in: delete, synonyms: [repeal, revoke, cancel, withdraw, terminate, abolish]}
+  request:    {included_in: use, synonyms: [request, apply_for, apply, seek, ask, claim]}
+  submit:     {included_in: transfer, synonyms: [submit, lodge, file, transmit, send, forward, present]}
+  notify:     {included_in: inform, synonyms: [notify, inform, communicate, alert]}
+  publish:    {included_in: distribute, synonyms: [publish, make_public, disclose]}
+  report:     {included_in: inform, synonyms: [report, demonstrate, highlight, indicate]}
+  monitor:    {included_in: use, synonyms: [monitor, supervise, oversee, follow_up, track]}
+  audit:      {included_in: use, synonyms: [audit, inspect, verify, check, control]}
+  assess:     {included_in: use, synonyms: [assess, evaluate, review, examine, analyse, analyze, appraise, consider, take_into_account, take_account]}
+  approve:    {included_in: use, synonyms: [approve, authorise, authorize, endorse, accept, agree, consent, validate, allow, permit, certify]}
+  reject:     {included_in: use, synonyms: [reject, refuse, deny]}
+  grant:      {included_in: transfer, synonyms: [grant, award, confer]}
+  provide:    {included_in: transfer, synonyms: [provide, supply, give, make_available, offer, deliver]}
+  fund:       {included_in: transfer, synonyms: [fund, finance, co_finance, cofinance, contribute, subsidise, subsidize, refinance, loan, lend]}
+  pay:        {included_in: compensate, synonyms: [pay, disburse, release, reimburse, make_payment, bear]}
+  mobilise:   {included_in: use, synonyms: [mobilise, mobilize, deploy, activate]}
+  allocate:   {included_in: transfer, synonyms: [allocate, assign, earmark, distribute, reallocate]}
+  use:        {included_in: use, synonyms: [use, utilise, utilize, employ, exploit, make_use, reuse]}
+  implement:  {included_in: use, synonyms: [implement, execute, carry_out, perform, conduct, undertake, take_measure, take_action, take_step, apply_measure]}
+  enforce:    {included_in: use, synonyms: [enforce]}
+  comply:     {included_in: use, synonyms: [comply, respect, observe, adhere, abide, meet, fulfil, fulfill]}
+  ensure:     {included_in: use, synonyms: [ensure, guarantee, safeguard, maintain, commit]}
+  cooperate:  {included_in: use, synonyms: [cooperate, coordinate, collaborate, consult, negotiate]}
+  participate: {included_in: use, synonyms: [participate, take_part, join]}
+  manage:     {included_in: use, synonyms: [manage, administer, govern, operate, run]}
+  protect:    {included_in: use, synonyms: [protect, preserve, conserve]}
+  promote:    {included_in: use, synonyms: [promote, support, encourage, foster, facilitate]}
+  suspend:    {included_in: use, synonyms: [suspend, interrupt, postpone]}
+  recover:    {included_in: transfer, synonyms: [recover, reclaim, repay, return]}
+  calculate:  {included_in: use, synonyms: [calculate, determine, compute, fix, set]}
+  access:     {included_in: read, synonyms: [access, read, view]}
+  share:      {included_in: distribute, synonyms: [share, exchange]}
+  retain:     {included_in: archive, synonyms: [retain, keep, store, archive]}
+  import:     {included_in: transfer, synonyms: [import]}
+  export:     {included_in: transfer, synonyms: [export]}
+  conclude:   {included_in: use, synonyms: [conclude, sign, enter_into]}
+  designate:  {included_in: use, synonyms: [designate, appoint, nominate, select, choose]}
+  prepare:    {included_in: use, synonyms: [prepare, draw_up, develop, design, elaborate, draft]}
+  receive:    {included_in: use, synonyms: [receive, obtain, benefit, borrow]}
+  transfer:   {included_in: transfer, synonyms: [transfer]}
+  include:    {included_in: use, synonyms: [include, incorporate, integrate]}
+  increase:   {included_in: modify, synonyms: [increase, raise, strengthen, reinforce, enhance, extend]}
+  reduce:     {included_in: modify, synonyms: [reduce, decrease, lower, limit, minimise, minimize]}
+  prevent:    {included_in: use, synonyms: [prevent, combat, fight, counter, tackle, avoid]}
+  advise:     {included_in: inform, synonyms: [advise, recommend, liaise, convene]}
+  produce:    {included_in: use, synonyms: [produce, generate, label]}
+
+# Structured ODRL constraints: left_operand, operator, right_operand.
+constraints:
+  # odrl: true -> defined in the ODRL 2.2 Common Vocabulary; false -> project extension
+  left_operands:
+    dateTime:    {odrl: true,  keywords: [date, deadline, until, before, after, time, day, start, end, entry_into_force, publication, adoption]}
+    elapsedTime: {odrl: true,  keywords: [duration, period, elapsed, months, weeks, years, days, term, maturity, max_maturity, delay]}
+    timeInterval: {odrl: true, keywords: [frequency, interval, regularly, periodicity, annual, annually]}
+    spatial:     {odrl: true,  keywords: [spatial, geographic, geographical, location, region, area, territory, country, place, coverage, zone]}
+    purpose:     {odrl: true,  keywords: [purpose, objective, aim, goal, use_of, scope, nature]}
+    payAmount:   {odrl: true,  keywords: [amount, sum, payment, contribution, funding, financing, budget, cost, price, value, eur, appropriation]}
+    percentage:  {odrl: true,  keywords: [percentage, percent, rate, share, proportion, ratio]}
+    count:       {odrl: true,  keywords: [count, number, maximum_number, minimum_number, quantity, instalment, tranche]}
+    recipient:   {odrl: true,  keywords: [recipient, beneficiary, addressee, target_group]}
+    event:       {odrl: true,  keywords: [event, disaster, disaster_type, condition, trigger, occurrence, emergency, urgency]}
+    industry:    {odrl: true,  keywords: [industry, sector, activity, nace]}
+    product:     {odrl: true,  keywords: [product, goods, commodity, asset_type]}
+    legalBasis:  {odrl: false, keywords: [legal_basis, basis, article, regulation, pursuant, accordance]}
+    procedure:   {odrl: false, keywords: [procedure, process, publication_in, approval, consultation, compliance, audit, audits, confidentiality, verification, monitor, monitoring, supervised_by, supervision, scale]}
+    condition:   {odrl: false, keywords: [condition, conditions, requirement, requirements, criteria, criterion, principle, principles, rule_of_law, democratic, reform, reforms, track_record, consistent, prerequisite]}
+  operators: [eq, neq, lt, lteq, gt, gteq, isA, isPartOf, isAnyOf, isAllOf, isNoneOf, hasPart]
+  # phrase in a free-text value -> operator
+  operator_cues:
+    lteq: [until, by, before, no later than, not later than, at the latest, up to, maximum, not exceed, not exceeding, at most]
+    gteq: [from, after, as of, starting, at least, minimum, not less than]
+    isPartOf: [within, in the territory of, part of]
+    isAnyOf: [one of, any of, either]
+    neq: [other than, except, excluding, not]
+
+# Canonical relations. A synonym listed under `inverse_synonyms` means the
+# source and target must be swapped. Symmetric relations need no inverse.
+relations:
+  governs:         {synonyms: [governs, regulates, applies_to, covers], inverse_synonyms: [governed_by, regulated_by, subject_to]}
+  manages:         {synonyms: [manages, administers, operates, runs, responsible_for], inverse_synonyms: [managed_by, administered_by, operated_by]}
+  funds:           {synonyms: [funds, finances, provides_funding_to, provides_financial_contribution_to, provides_contribution, contributes_to, mobilises, mobilizes], inverse_synonyms: [funded_by, financed_by, receives_funding_from]}
+  provides:        {synonyms: [provides, supplies, grants, provided_to], inverse_synonyms: [provided_by, granted_by, supplied_by]}
+  implements:      {synonyms: [implements, executes, carries_out], inverse_synonyms: [implemented_by, executed_by]}
+  monitors:        {synonyms: [monitors, supervises, oversees, assesses, evaluates, audits, reviews], inverse_synonyms: [monitored_by, supervised_by, assessed_by, evaluated_by, audited_by]}
+  approves:        {synonyms: [approves, adopts, authorises, authorizes, endorses, issues], inverse_synonyms: [approved_by, adopted_by, authorised_by, authorized_by, issued_by]}
+  submits:         {synonyms: [submits, lodges, transmits, sends], inverse_synonyms: [submitted_by, lodged_by, transmitted_by]}
+  reports_to:      {synonyms: [reports_to, informs, notifies, submitted_to], inverse_synonyms: []}
+  establishes:     {synonyms: [establishes, creates, sets_up], inverse_synonyms: [established_by, created_by, set_up_by]}
+  amends:          {synonyms: [amends, modifies], inverse_synonyms: [amended_by, modified_by]}
+  repeals:         {synonyms: [repeals, revokes], inverse_synonyms: [repealed_by, revoked_by]}
+  based_on:        {synonyms: [based_on, pursuant_to, derives_from], inverse_synonyms: [basis_for]}
+  part_of:         {synonyms: [part_of, belongs_to, member_of, component_of], inverse_synonyms: [has_part, includes, contains, comprises, has_member]}
+  participates_in: {synonyms: [participates_in, takes_part_in, involved_in], inverse_synonyms: [requires_participation_from, involves]}
+  requires:        {synonyms: [requires, conditional_on, depends_on, relies_on], inverse_synonyms: [required_by]}
+  uses:            {synonyms: [uses, utilises, utilizes, used_for, employs], inverse_synonyms: [used_by]}
+  benefits:        {synonyms: [benefits, benefits_party, supports, assists], inverse_synonyms: [benefits_from, supported_by, receives]}
+  complies_with:   {synonyms: [complies_with, comply_with, respects, respect, observes], inverse_synonyms: []}
+  cooperates_with: {synonyms: [cooperates_with, negotiated_with, negotiates_with, coordinates_with, consults], inverse_synonyms: [], symmetric: true}
+  represents:      {synonyms: [represents, acts_on_behalf_of], inverse_synonyms: [represented_by]}
+  concerns:        {synonyms: [concerns, relates_to, related_to, associated_with, accompanied_by, determined_by, ensures, about], inverse_synonyms: []}
+
+# Words that belong to the ODRL meta-model. A class whose name is built on
+# them is a rule or rule part mistyped as a domain class ("AuditDuty").
+reserved_terms:
+  # tokens (after splitting CamelCase/snake_case) that mark a name as leakage.
+  # Deliberately excludes words with common legal meanings ('rule' as in RuleOfLaw,
+  # 'operator' as in NetworkOperator, 'target' as in EmissionTarget, 'policy').
+  always: [permission, prohibition, obligation, constraint, assignee, assigner, rightsholder, refinement]
+  # 'duty' is reserved unless it names a real economic charge
+  duty_allowlist: [import, export, customs, excise, anti_dumping, antidumping, countervailing, stamp, provisional, definitive, compensatory, levy]
+  # bare core names never usable as a class name
+  bare_core_names: [policy, rule, asset, party, action, permission, prohibition, duty, constraint, rightsholder]

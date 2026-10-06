@@ -1,0 +1,19 @@
+# Parameters for pipeline 'ontology_refinement' (runs after ontology_merge_global).
+#
+# Deterministic: gazetteer + controlled vocabulary + consistency checks.
+# Run with:  uv run kedro run --pipelines ontology_refinement
+
+ontology_refinement:
+  input_path: data/06_models/eurlex_odrl_ontology_merged.json
+  output_path: data/07_model_output/eurlex_odrl_ontology_refined.json
+  report_path: data/08_reporting/ontology_refinement_report.json
+  vocabulary_path: null      # null = packaged resources/vocabulary.yml
+
+  # Optional: confirm low-confidence class/individual decisions on Wikidata
+  # (P31 instance of vs P279 subclass of). Needs network access; results are
+  # cached so each label is looked up once. Off by default.
+  wikidata:
+    enabled: false
+    cache_path: data/02_intermediate/wikidata_cache.json
+    user_agent: "EurLexOntologyGeneration/0.1 (research project)"
+    max_lookups: 200

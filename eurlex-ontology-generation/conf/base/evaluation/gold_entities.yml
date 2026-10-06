@@ -1,0 +1,41 @@
+# SEED gold set for typing / class-vs-individual evaluation.
+#
+# Written to bootstrap the evaluation harness; it is NOT an expert annotation.
+# Replace or extend it with entries checked by a legal-ontology expert, sampled
+# from the documents actually processed (aim for 100+ entities spread across
+# act types and years). Entries that also appear in the gazetteer only test that
+# the gazetteer is applied; the entries marked `# not in gazetteer` test the
+# generator and the keyword typer.
+#
+# Fields: name (+ optional aliases), type (Party | Asset | Legal_extension),
+# is_a (upper ontology class), kind (class | individual).
+
+entities:
+  # individuals known to the gazetteer
+  - {name: European_Commission, type: Party, is_a: EUInstitution, kind: individual}
+  - {name: Council, type: Party, is_a: EUInstitution, kind: individual}
+  - {name: European_Parliament, type: Party, is_a: EUInstitution, kind: individual}
+  - {name: Latvia, type: Party, is_a: Country, kind: individual}
+  - {name: Cyprus, type: Party, is_a: Country, kind: individual}
+  - {name: Greece, type: Party, is_a: Country, kind: individual}
+  - {name: United_Kingdom, type: Party, is_a: Country, kind: individual}
+  - {name: IMF, type: Party, is_a: InternationalOrganisation, kind: individual}
+  - {name: EGF, type: Asset, is_a: Fund, kind: individual}
+  - {name: European_Union_Solidarity_Fund, aliases: [SolidarityFund], type: Asset, is_a: Fund, kind: individual}
+  - {name: Flexibility_Instrument, aliases: [FlexibilityInstrument], type: Asset, is_a: FinancialInstrument, kind: individual}
+  - {name: OLAF, type: Party, is_a: EUBody, kind: individual}
+  # not in gazetteer
+  - {name: Member_State, aliases: [MemberState], type: Party, is_a: Country, kind: class}
+  - {name: Decision, type: Asset, is_a: LegalAct, kind: class}
+  - {name: Regulation, type: Asset, is_a: LegalAct, kind: class}
+  - {name: Application, type: Asset, is_a: Document, kind: class}
+  - {name: FinancialContribution, type: Asset, is_a: FinancialInstrument, kind: class}
+  - {name: MacroFinancialAssistance, type: Asset, is_a: FinancialInstrument, kind: class}
+  - {name: Earthquake, type: Legal_extension, is_a: Event, kind: class}
+  - {name: Notification, type: Asset, is_a: Document, kind: class}
+  - {name: Spectrum, type: Asset, is_a: Resource, kind: class}
+  - {name: ThirdCountry, type: Party, is_a: Country, kind: class}
+  - {name: Cyprus_Government, type: Party, is_a: PublicAuthority, kind: individual}
+  - {name: EGF_Mobilization, type: Legal_extension, is_a: Procedure, kind: class}
+  - {name: Stakeholder, type: Party, is_a: PartyRole, kind: class}
+  - {name: IndependentExperts, aliases: [Independent_Experts], type: Party, is_a: NaturalPerson, kind: class}
