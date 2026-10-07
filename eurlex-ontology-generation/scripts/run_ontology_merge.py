@@ -10,8 +10,9 @@
 3. Optionally runs ontology_merge_global once at the end, so the
    final ontology reflects every partition merged so far.
 4. Then runs ontology_refinement on the global merge (deterministic typing,
-   class/individual split, controlled vocabulary, consistency report),
-   unless --skip-refinement is given.
+   class/individual split, controlled vocabulary, consistency report) and
+   ontology_export (OWL/ODRL Turtle + SHACL validation), unless
+   --skip-refinement is given.
 
 This mirrors the checkpoint/resume pattern already used by
 scripts/run_ontology_batches.py, but at the partition level instead
@@ -155,6 +156,17 @@ def main() -> None:
                 print("Ontology refinement failed.")
                 sys.exit(1)
             print("Refinement completed: data/07_model_output/eurlex_odrl_ontology_refined.json")
+
+            print()
+            print("=" * 70)
+            print("Exporting to OWL/ODRL Turtle and validating with SHACL")
+            print("=" * 70)
+            result = subprocess.run(
+                ["uv", "run", "kedro", "run", "--pipelines", "ontology_export"], check=False)
+            if result.returncode != 0:
+                print("Export or SHACL validation failed (see data/08_reporting/ontology_export_summary.json).")
+                sys.exit(1)
+            print("Export completed: data/07_model_output/eurlex_odrl_ontology.ttl")
 
 
 if __name__ == "__main__":

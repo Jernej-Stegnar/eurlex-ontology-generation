@@ -170,3 +170,28 @@ rule_application_trace:
   filepath: data/08_reporting/rule_application_trace.json
   save_args:
     indent: 2
+
+# Refined ontology (ontology_refinement output, ontology_export input).
+# Declared here so Kedro orders the two pipelines when run together.
+refined_ontology:
+  type: json.JSONDataset
+  filepath: data/07_model_output/eurlex_odrl_ontology_refined.json
+  save_args:
+    indent: 2
+    ensure_ascii: false
+
+refinement_report:
+  type: json.JSONDataset
+  filepath: data/08_reporting/ontology_refinement_report.json
+  save_args:
+    indent: 2
+    ensure_ascii: false
+
+# rdflib graphs passed between ontology_export nodes: hand over by reference
+ontology_rdf_graph:
+  type: MemoryDataset
+  copy_mode: assign
+
+shacl_report_graph:
+  type: MemoryDataset
+  copy_mode: assign

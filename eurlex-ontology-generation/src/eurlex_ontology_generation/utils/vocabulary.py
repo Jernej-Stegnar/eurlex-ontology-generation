@@ -130,10 +130,10 @@ class Vocabulary:
         hit = (set(tokens) | joined_pairs) & self.reserved_always
         if hit:
             return f"'{name}' contains ODRL meta-model term '{sorted(hit)[0]}'"
-        if tokens[-1] == "duty" and len(tokens) > 1:
-            prefix = tokens[:-1]
-            if not (set(prefix) & self.duty_allowlist):
-                if self.match_action(prefix)[0] is not None:
+        for i, tok in enumerate(tokens):
+            if tok == "duty" and i > 0:
+                prefix = tokens[:i]
+                if not (set(prefix) & self.duty_allowlist) and self.match_action(prefix)[0] is not None:
                     return f"'{name}' is a reified duty (action '{'_'.join(prefix)}' + 'Duty')"
         return None
 

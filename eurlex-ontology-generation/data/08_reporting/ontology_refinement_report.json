@@ -1,10 +1,10 @@
 {
   "changes": {
     "renamed_to_gazetteer": 7,
-    "leakage_removed": 9,
+    "leakage_removed": 10,
     "kind_set_individual": 42,
     "retyped": 70,
-    "kind_set_class": 164,
+    "kind_set_class": 163,
     "action_normalized": 442,
     "constraint_structured": 370,
     "rule_dropped_party": 24,
@@ -31,6 +31,7 @@
       "'PRIMA_Funding_Access_RightsHolder' contains ODRL meta-model term 'rightsholder'",
       "'AuditPermission' contains ODRL meta-model term 'permission'",
       "'AuditDuty' is a reified duty (action 'audit' + 'Duty')",
+      "'AuditDutyTarget' is a reified duty (action 'audit' + 'Duty')",
       "'AuditPermissionTarget' contains ODRL meta-model term 'permission'",
       "'Notification_Obligation' contains ODRL meta-model term 'obligation'"
     ],
@@ -183,7 +184,6 @@
     ],
     "isolated_entities": [
       "Appropriation",
-      "AuditDutyTarget",
       "Authorization",
       "CulturalHeritageAction",
       "CulturalHeritageProtection",
@@ -214,7 +214,7 @@
     }
   ],
   "counts": {
-    "classes": 164,
+    "classes": 163,
     "individuals": 42,
     "relationships": 86,
     "permissions": 274,

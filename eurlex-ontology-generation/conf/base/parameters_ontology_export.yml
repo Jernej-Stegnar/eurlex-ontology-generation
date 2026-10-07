@@ -1,0 +1,22 @@
+# Parameters for pipeline 'ontology_export' (runs after ontology_refinement).
+#
+# Exports the refined ontology as OWL 2 + ODRL 2.2 Turtle and validates it with
+# the SHACL shapes in src/eurlex_ontology_generation/resources/shapes.ttl.
+# Run with:  uv run kedro run --pipelines ontology_export
+
+ontology_export:
+  # input: the catalog dataset `refined_ontology`
+  turtle_path: data/07_model_output/eurlex_odrl_ontology.ttl
+  shacl_report_path: data/08_reporting/shacl_report.ttl
+  summary_path: data/08_reporting/ontology_export_summary.json
+  # Namespace for the project's IRIs. example.org is a placeholder: replace it
+  # with a namespace you control (e.g. a w3id.org redirect) before publishing.
+  base_iri: "http://example.org/eurlex-odrl/"
+  shapes_path: null          # null = packaged resources/shapes.ttl
+  vocabulary_path: null
+  # true: the pipeline fails when SHACL reports any sh:Violation (use in CI).
+  # Warnings and infos never fail the run.
+  fail_on_violation: true
+  # OWL 2 consistency check with HermiT (owlready2 + Java). Skipped, and
+  # reported as unavailable, when either is missing.
+  run_reasoner: true

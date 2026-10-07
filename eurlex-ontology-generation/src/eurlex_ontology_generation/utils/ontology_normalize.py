@@ -117,7 +117,7 @@ def normalize_chunk_ontology(onto: dict, vocab: Vocabulary | None = None,
             note("class_kind_set", f"{name}: {cls.get('kind')} -> {typed['kind']} ({typed['kind_confidence']})")
         entry = {"name": name, "type": typed["type"], "is_a": typed["is_a"], "kind": typed["kind"],
                  "description": str(cls.get("description") or "")}
-        for extra in ("iri", "member_state", "related_individual"):
+        for extra in ("iri", "wikidata", "member_state", "related_individual"):
             if typed.get(extra) is not None:
                 entry[extra] = typed[extra]
         if name in classes:
@@ -233,8 +233,9 @@ def normalize_chunk_ontology(onto: dict, vocab: Vocabulary | None = None,
         typed = type_entity(ref, "", vocab, gazetteer)
         classes[ref] = {"name": ref, "type": typed["type"], "is_a": typed["is_a"],
                         "kind": typed["kind"], "description": ""}
-        if typed.get("iri"):
-            classes[ref]["iri"] = typed["iri"]
+        for extra in ("iri", "wikidata"):
+            if typed.get(extra):
+                classes[ref][extra] = typed[extra]
         note("undefined_entity_defined", f"{ref} as {typed['type']}/{typed['is_a']}")
 
     out["classes"] = list(classes.values())

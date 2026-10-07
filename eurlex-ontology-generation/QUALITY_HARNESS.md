@@ -68,18 +68,59 @@ consistency, linking and review approval per round, plus gold-set accuracy.
 `conf/base/evaluation/gold_entities.yml` is a **seed** written with the
 harness; replace it with expert annotations before trusting its numbers.
 
+## OWL/ODRL export and validation
+`uv run kedro run --pipelines ontology_export` (also run by
+`scripts/run_ontology_merge.py`) turns the refined JSON into
+`data/07_model_output/eurlex_odrl_ontology.ttl` and checks it three ways:
+
+| Check | Tool | Fails the run on |
+|---|---|---|
+| Turtle round trip | rdflib | any triple lost |
+| SHACL (`resources/shapes.ttl`) | pySHACL | any `sh:Violation` (`fail_on_violation`) |
+| OWL 2 consistency | HermiT via owlready2 (optional, needs Java) | inconsistency or unsatisfiable class |
+
+Graph layout: `eo:Party ≡ odrl:Party`, `eo:Asset ≡ odrl:Asset` and
+`eo:LegalExtension` are pairwise disjoint; the 20 upper classes sit under them;
+domain classes are `owl:Class` + `rdfs:subClassOf` an upper class; individuals
+are `owl:NamedIndividual` typed with an upper class, `owl:sameAs` their Wikidata
+item and `skos:exactMatch` their EU Vocabularies IRI. Rules are
+`odrl:Permission/Prohibition/Duty` in one `odrl:Set`, with typed constraints
+(`xsd:date`, `xsd:decimal`, `odrl:unit` = EU currency IRI). `base_iri` is a
+placeholder (`http://example.org/eurlex-odrl/`): set a namespace you control
+before publishing.
+
+SHACL severities: **Violation** = structurally broken (rule without action or
+assignee, non-ODRL operator, entity under two disjoint core classes, core type
+contradicting its parent, meta-model term as a name, dangling reference);
+**Warning** = modelling problem needing a human decision (assignee not a Party,
+target is a Party, duty from a recital, free-text `condition` constraint,
+undated `dateTime`, action outside the vocabulary, isolated entity);
+**Info** = individual without an external identifier.
+Results: `data/08_reporting/ontology_export_summary.json` and `shacl_report.ttl`.
+
+## Identifiers
+`resources/gazetteer.yml` now carries Wikidata QIDs for 91 entries (collected
+from web-search results whose page title exactly matched the label; ambiguous
+cases have a `wikidata_note`) and EU Vocabularies IRIs for all countries plus the
+Commission's corporate-body IRI. On a machine with internet access:
+```bash
+uv run python scripts/link_identifiers.py --verify                       # label + P31 check of every QID
+uv run python scripts/link_identifiers.py --corporate-body-rdf <file> --write   # fill corporate-body IRIs
+```
+
 ## Running
 ```bash
 uv run python scripts/run_ontology_batches.py --max-batches 10 --review-rounds 2
 uv run python scripts/run_ontology_merge.py          # partitions, global, refinement
 uv run kedro run --pipelines ontology_refinement     # refinement only (no LLM)
-uv run pytest tests/test_quality_harness.py
+uv run kedro run --pipelines ontology_export          # Turtle + SHACL + HermiT
+uv sync --extra reasoner                              # owlready2 for the HermiT check
+uv run pytest tests/test_quality_harness.py tests/test_rdf_export.py
 ```
 
 ## Not done here
-- Corporate-body IRIs and Wikidata QIDs in the gazetteer are left empty rather
-  than typed from memory; fill them from the EU Vocabularies authority tables.
-- OWL/Turtle export and SHACL shapes.
+- Corporate-body IRIs other than the Commission's (run `link_identifiers.py`
+  with the downloaded authority table).
 - Chunking on article boundaries (recitals are only flagged, not separated).
 - The new prompts and schema have not been run against Ollama in this branch;
   run a few batches and compare with `evaluate_ontology.py`.

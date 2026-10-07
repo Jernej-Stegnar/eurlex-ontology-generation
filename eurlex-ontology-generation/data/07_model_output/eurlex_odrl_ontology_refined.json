@@ -12,7 +12,6 @@
     ],
     "extensions": [
       "AssessmentRequirement",
-      "AuditDutyTarget",
       "Authorization",
       "CulturalHeritageAction",
       "CulturalHeritagePolicy",
@@ -234,18 +233,6 @@
         "documents": 1
       },
       "type_source": "declared type",
-      "kind_confidence": "low"
-    },
-    {
-      "name": "AuditDutyTarget",
-      "type": "Legal_extension",
-      "is_a": "Procedure",
-      "description": "The entity to which an AuditDuty applies",
-      "support": {
-        "chunks": 1,
-        "documents": 1
-      },
-      "type_source": "keyword (name token 'audit')",
       "kind_confidence": "low"
     },
     {
@@ -2156,6 +2143,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/BEL",
       "member_state": true,
+      "wikidata": "Q31",
       "instance_of": "Country"
     },
     {
@@ -2170,6 +2158,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/BGR",
       "member_state": true,
+      "wikidata": "Q219",
       "instance_of": "Country"
     },
     {
@@ -2182,6 +2171,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q205203",
       "instance_of": "EUBody"
     },
     {
@@ -2194,6 +2184,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q8896",
       "instance_of": "EUInstitution"
     },
     {
@@ -2206,6 +2197,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q8900",
       "instance_of": "EUInstitution"
     },
     {
@@ -2220,6 +2212,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/CYP",
       "member_state": true,
+      "wikidata": "Q229",
       "instance_of": "Country"
     },
     {
@@ -2258,6 +2251,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q41332564",
       "instance_of": "Fund"
     },
     {
@@ -2282,6 +2276,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q905698",
       "instance_of": "Fund"
     },
     {
@@ -2294,6 +2289,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q933835",
       "merged_from": [
         "Europass",
         "EuropassFramework",
@@ -2311,6 +2307,8 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "iri": "http://publications.europa.eu/resource/authority/corporate-body/COM",
+      "wikidata": "Q8880",
       "instance_of": "EUInstitution"
     },
     {
@@ -2323,6 +2321,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q8886",
       "instance_of": "EUInstitution"
     },
     {
@@ -2335,6 +2334,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q672941",
       "instance_of": "EUBody"
     },
     {
@@ -2347,6 +2347,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q8889",
       "instance_of": "EUInstitution"
     },
     {
@@ -2359,6 +2360,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q458",
       "instance_of": "InternationalOrganisation"
     },
     {
@@ -2371,6 +2373,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q5413352",
       "instance_of": "Fund"
     },
     {
@@ -2385,6 +2388,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/FIN",
       "member_state": true,
+      "wikidata": "Q33",
       "instance_of": "Country"
     },
     {
@@ -2411,6 +2415,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/FRA",
       "member_state": true,
+      "wikidata": "Q142",
       "instance_of": "Country"
     },
     {
@@ -2425,6 +2430,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/GEO",
       "member_state": false,
+      "wikidata": "Q230",
       "instance_of": "Country"
     },
     {
@@ -2452,6 +2458,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/DEU",
       "member_state": true,
+      "wikidata": "Q183",
       "instance_of": "Country"
     },
     {
@@ -2466,6 +2473,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/GRC",
       "member_state": true,
+      "wikidata": "Q41",
       "instance_of": "Country"
     },
     {
@@ -2478,6 +2486,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q7804",
       "instance_of": "InternationalOrganisation"
     },
     {
@@ -2492,6 +2501,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/ITA",
       "member_state": true,
+      "wikidata": "Q38",
       "instance_of": "Country"
     },
     {
@@ -2506,6 +2516,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/LVA",
       "member_state": true,
+      "wikidata": "Q211",
       "instance_of": "Country"
     },
     {
@@ -2520,6 +2531,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/LTU",
       "member_state": true,
+      "wikidata": "Q37",
       "instance_of": "Country"
     },
     {
@@ -2560,6 +2572,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/NLD",
       "member_state": true,
+      "wikidata": "Q55",
       "instance_of": "Country"
     },
     {
@@ -2572,6 +2585,7 @@
       },
       "type_source": "gazetteer",
       "kind_confidence": "high",
+      "wikidata": "Q1138377",
       "instance_of": "EUBody"
     },
     {
@@ -2614,6 +2628,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/POL",
       "member_state": true,
+      "wikidata": "Q36",
       "instance_of": "Country"
     },
     {
@@ -2628,6 +2643,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/PRT",
       "member_state": true,
+      "wikidata": "Q45",
       "instance_of": "Country"
     },
     {
@@ -2642,6 +2658,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/MDA",
       "member_state": false,
+      "wikidata": "Q217",
       "instance_of": "Country"
     },
     {
@@ -2656,6 +2673,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/ESP",
       "member_state": true,
+      "wikidata": "Q29",
       "instance_of": "Country"
     },
     {
@@ -2670,6 +2688,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/SWE",
       "member_state": true,
+      "wikidata": "Q34",
       "instance_of": "Country"
     },
     {
@@ -2684,6 +2703,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/UKR",
       "member_state": false,
+      "wikidata": "Q212",
       "instance_of": "Country"
     },
     {
@@ -2698,6 +2718,7 @@
       "kind_confidence": "high",
       "iri": "http://publications.europa.eu/resource/authority/country/GBR",
       "member_state": false,
+      "wikidata": "Q145",
       "instance_of": "Country"
     }
   ],

@@ -1,0 +1,148 @@
+{
+  "fail_on_violation": true,
+  "export": {
+    "classes": 163,
+    "individuals": 42,
+    "rules": 453,
+    "relationships": 86,
+    "constraints": 358,
+    "triples": 7934
+  },
+  "export_skipped": [],
+  "graph": {
+    "owl_classes": 186,
+    "named_individuals": 42,
+    "object_properties": 26,
+    "permissions": 274,
+    "prohibitions": 0,
+    "duties": 179,
+    "constraints": 358,
+    "actions": 60
+  },
+  "turtle_round_trip": {
+    "triples": 7934,
+    "triples_after_round_trip": 7934,
+    "ok": true
+  },
+  "shacl": {
+    "conforms_without_violations": true,
+    "shacl_conforms_strict": true,
+    "results_by_severity": {
+      "Warning": 376,
+      "Info": 9
+    },
+    "results": [
+      {
+        "severity": "Warning",
+        "message": "Constraint uses the fallback 'condition' operand (free-text condition).",
+        "count": 228,
+        "examples": [
+          "_:Nde94500",
+          "_:N418ba01",
+          "_:N269eb9d",
+          "_:N439e960",
+          "_:Nf3c16d2",
+          "_:N654e598",
+          "_:N41d3293",
+          "_:N8ba6151"
+        ]
+      },
+      {
+        "severity": "Warning",
+        "message": "Entity is not used by any rule or relationship.",
+        "count": 59,
+        "examples": [
+          "ElectronicCommunicationService",
+          "DTT and PMSE users",
+          "PRIMAIS Funding Action",
+          "NotificationRequirement",
+          "financial year",
+          "DTT and PMSE Sectors",
+          "AssessmentRequirement",
+          "QualificationsFrameworks"
+        ]
+      },
+      {
+        "severity": "Warning",
+        "message": "odrl:target is a Party; the target is what the action applies to.",
+        "count": 42,
+        "examples": [
+          "permission_aab8285dbbfd",
+          "permission_2d7221e3e05a",
+          "permission_407a55f659e7",
+          "permission_eadbf82d7bf0",
+          "permission_5aa8db65e1b7",
+          "permission_b36c7cea9a60",
+          "permission_ab0c756e73f5",
+          "permission_0c99ba25c6ec"
+        ]
+      },
+      {
+        "severity": "Warning",
+        "message": "odrl:assignee is not typed Party.",
+        "count": 24,
+        "examples": [
+          "duty_f758b7f38b4f",
+          "permission_480e30e56e68",
+          "permission_8003f4f49408",
+          "duty_74202665b1c6",
+          "duty_9a8be0211a76",
+          "duty_4fc8a285414e",
+          "duty_585ebbf3dc96",
+          "permission_ef2140a619a5"
+        ]
+      },
+      {
+        "severity": "Warning",
+        "message": "Action is outside the controlled vocabulary (no odrl:includedIn parent).",
+        "count": 12,
+        "examples": [
+          "pool",
+          "organize",
+          "draw",
+          "make",
+          "on",
+          "take",
+          "work",
+          "upgrade"
+        ]
+      },
+      {
+        "severity": "Warning",
+        "message": "dateTime constraint whose right operand is not an xsd:date.",
+        "count": 11,
+        "examples": [
+          "_:N9224c32",
+          "_:N5d3884d",
+          "_:N01db418",
+          "_:N5b59dda",
+          "_:Ne210ec8",
+          "_:N7cacc44",
+          "_:N8fb4698",
+          "_:N622c8b7"
+        ]
+      },
+      {
+        "severity": "Info",
+        "message": "Individual has no external identifier (owl:sameAs Wikidata or skos:exactMatch authority IRI).",
+        "count": 9,
+        "examples": [
+          "Cyprus Territory",
+          "NationalBankOfMoldova",
+          "PRIMA",
+          "Moldova Reform Roadmap",
+          "Flexibility Instrument",
+          "PRIMAIS",
+          "Cyprus Government",
+          "EFSD Guarantee Fund"
+        ]
+      }
+    ]
+  },
+  "owl_reasoner": {
+    "available": true,
+    "reasoner": "HermiT",
+    "consistent": true,
+    "unsatisfiable_classes": []
+  }
+}

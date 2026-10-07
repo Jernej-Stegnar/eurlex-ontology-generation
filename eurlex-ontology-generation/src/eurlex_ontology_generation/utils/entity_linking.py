@@ -63,6 +63,7 @@ class GazetteerEntry:
     core_type: str
     iri: str | None = None
     member_state: bool | None = None
+    wikidata: str | None = None
     source: str = "gazetteer"
 
     def as_dict(self) -> dict:
@@ -72,6 +73,8 @@ class GazetteerEntry:
             out["iri"] = self.iri
         if self.member_state is not None:
             out["member_state"] = self.member_state
+        if self.wikidata:
+            out["wikidata"] = self.wikidata
         return out
 
 
@@ -122,7 +125,7 @@ def load_gazetteer(path: str | None = None, vocabulary_path: str | None = None) 
         entries.append(GazetteerEntry(
             name=c["name"], is_a="Country", core_type=vocab.core_type_of("Country"),
             iri=f"{prefix}{c['iso3']}" if c.get("iso3") else None,
-            member_state=bool(c.get("member_state"))))
+            member_state=bool(c.get("member_state")), wikidata=c.get("wikidata")))
         for a in c.get("aliases", []) or []:
             aliases[a] = c["name"]
     for e in raw.get("entities", []):
@@ -130,7 +133,7 @@ def load_gazetteer(path: str | None = None, vocabulary_path: str | None = None) 
         if core is None:
             raise ValueError(f"Gazetteer entry {e['name']}: unknown is_a {e['is_a']}")
         entries.append(GazetteerEntry(name=e["name"], is_a=e["is_a"], core_type=core,
-                                      iri=e.get("iri")))
+                                      iri=e.get("iri"), wikidata=e.get("wikidata")))
         for a in e.get("aliases", []) or []:
             aliases[a] = e["name"]
     return Gazetteer(entries, aliases)

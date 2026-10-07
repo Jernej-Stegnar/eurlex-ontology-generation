@@ -218,6 +218,7 @@ HEADLINE = [
     ("consistency", "rules_party_not_party"), ("consistency", "rules_asset_is_party"),
     ("consistency", "undefined_references"), ("consistency", "isolated_entities"),
     ("linking", "pct_entities_with_identifier"),
+    ("shacl", "violations"), ("shacl", "warnings"), ("shacl", "infos"),
 ]
 
 

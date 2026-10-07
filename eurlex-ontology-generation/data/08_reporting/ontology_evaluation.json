@@ -31,10 +31,11 @@
         "pct_entities_with_kind": 0.0
       },
       "leakage": {
-        "count": 9,
+        "count": 10,
         "names": [
           "Assignee",
           "AuditDuty",
+          "AuditDutyTarget",
           "AuditPermission",
           "AuditPermissionTarget",
           "FundamentalRightsHolder",
@@ -419,7 +420,7 @@
     },
     "eurlex_odrl_ontology_refined.json": {
       "size": {
-        "classes": 164,
+        "classes": 163,
         "individuals": 42,
         "relationships": 86,
         "permissions": 274,
@@ -427,12 +428,12 @@
         "duties": 179
       },
       "long_tail": {
-        "pct_entities_single_document": 84.5
+        "pct_entities_single_document": 84.4
       },
       "typing": {
         "type_values": {
           "Asset": 80,
-          "Legal_extension": 37,
+          "Legal_extension": 36,
           "Party": 89
         },
         "known_entities": 36,
@@ -470,10 +471,10 @@
         "rules_party_not_party": 24,
         "rules_asset_is_party": 42,
         "undefined_references": 0,
-        "isolated_entities": 20
+        "isolated_entities": 19
       },
       "linking": {
-        "pct_entities_with_identifier": 9.2
+        "pct_entities_with_identifier": 16.1
       },
       "gold": {
         "gold_entities": 26,
@@ -482,22 +483,12 @@
         "is_a_accuracy": 100.0,
         "kind_accuracy": 100.0,
         "errors": []
+      },
+      "shacl": {
+        "violations": 0,
+        "warnings": 376,
+        "infos": 9
       }
-    }
-  },
-  "review": {
-    "per_round": {
-      "0": {
-        "chunks": 230,
-        "approved": 0,
-        "pct_approved": 0.0,
-        "mean_overall_score": 2.71
-      }
-    },
-    "final": {
-      "chunks": 230,
-      "pct_approved_latest_round": 0.0,
-      "chunks_with_reviewed_revision": 0
     }
   }
 }

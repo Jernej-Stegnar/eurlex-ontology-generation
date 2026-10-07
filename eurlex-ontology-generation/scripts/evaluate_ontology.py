@@ -36,6 +36,8 @@ def main() -> None:
     parser.add_argument("--gold", default=None, help="Gold entity annotations (YAML).")
     parser.add_argument("--reviews-dir", default=None, help="Directory with review part_*.csv files.")
     parser.add_argument("--out", default=None, help="Write all metrics to this JSON file.")
+    parser.add_argument("--shacl", action="store_true",
+                        help="Also export refined ontologies to RDF and count SHACL results.")
     args = parser.parse_args()
 
     results = {}
@@ -44,6 +46,14 @@ def main() -> None:
         metrics = compute_metrics(onto)
         if args.gold:
             metrics["gold"] = gold_metrics(onto, args.gold)
+        if args.shacl and "individuals" in onto:
+            from eurlex_ontology_generation.utils.rdf_export import export_rdf
+            from eurlex_ontology_generation.utils.rdf_validate import validate_graph
+
+            _, _, shacl = validate_graph(export_rdf(onto)[0])
+            counts = shacl["results_by_severity"]
+            metrics["shacl"] = {"violations": counts.get("Violation", 0),
+                                "warnings": counts.get("Warning", 0), "infos": counts.get("Info", 0)}
         results[Path(path).name] = metrics
 
     print(headline_table(results))

@@ -1,0 +1,268 @@
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+@prefix eo:   <http://example.org/eurlex-odrl/ontology#> .
+@prefix eosh: <http://example.org/eurlex-odrl/shapes#> .
+
+# SHACL shapes for the exported EurLex ODRL ontology.
+#
+# Severity
+#   sh:Violation  structural errors: the graph is not a well-formed ontology / ODRL policy
+#   sh:Warning    modelling-quality problems that need a human decision
+#   sh:Info       coverage signals (e.g. individual without external identifier)
+#
+# The `eo:` namespace must match the base IRI used by the exporter; the
+# validator rewrites it automatically when a different base IRI is configured.
+
+eosh: sh:declare [
+    sh:prefix "eo" ; sh:namespace "http://example.org/eurlex-odrl/ontology#"^^xsd:anyURI ] ,
+  [ sh:prefix "odrl" ; sh:namespace "http://www.w3.org/ns/odrl/2/"^^xsd:anyURI ] ,
+  [ sh:prefix "owl" ; sh:namespace "http://www.w3.org/2002/07/owl#"^^xsd:anyURI ] ,
+  [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] ,
+  [ sh:prefix "rdf" ; sh:namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#"^^xsd:anyURI ] ,
+  [ sh:prefix "skos" ; sh:namespace "http://www.w3.org/2004/02/skos/core#"^^xsd:anyURI ] .
+
+# ---------------------------------------------------------------- entities
+eosh:EntityShape
+  a sh:NodeShape ;
+  sh:targetSubjectsOf eo:entityKind ;
+  sh:property [
+    sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ;
+    sh:message "Entity must have exactly one rdfs:label." ] ;
+  sh:property [
+    sh:path eo:entityKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ( "class" "individual" ) ;
+    sh:message "eo:entityKind must be 'class' or 'individual'." ] ;
+  sh:property [
+    sh:path eo:coreType ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ( "Party" "Asset" "Legal_extension" ) ;
+    sh:message "eo:coreType must be exactly one of Party, Asset, Legal_extension." ] ;
+  sh:property [
+    sh:path rdfs:label ;
+    sh:not [ sh:pattern "(?i)(permission|prohibition|obligation|constraint|assignee|assigner|rights ?holder|refinement|duty ?target)" ] ;
+    sh:message "ODRL meta-model term used as an entity name (express it as a rule instead)." ] ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "Entity's eo:coreType does not match the core type of its upper-ontology parent." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this ?parent ?value WHERE {
+        $this eo:coreType ?value .
+        { $this rdfs:subClassOf ?parent } UNION { $this rdf:type ?parent }
+        ?parent eo:upperClass true ; eo:coreType ?parentCore .
+        FILTER (?parentCore != ?value)
+      }""" ] .
+
+eosh:DomainClassShape
+  a sh:NodeShape ;
+  sh:targetSubjectsOf eo:entityKind ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "A domain class must be typed owl:Class." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this WHERE {
+        $this eo:entityKind "class" .
+        FILTER NOT EXISTS { $this a owl:Class }
+      }""" ] ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "A domain class must have exactly one upper-ontology parent (rdfs:subClassOf)." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this (COUNT(?p) AS ?n) WHERE {
+        $this eo:entityKind "class" .
+        OPTIONAL { $this rdfs:subClassOf ?p . ?p eo:upperClass true }
+      } GROUP BY $this HAVING (COUNT(?p) != 1)""" ] .
+
+eosh:IndividualShape
+  a sh:NodeShape ;
+  sh:targetSubjectsOf eo:entityKind ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "An individual must be an owl:NamedIndividual typed with exactly one upper-ontology class, and never a subclass." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this (COUNT(DISTINCT ?t) AS ?n) WHERE {
+        $this eo:entityKind "individual" .
+        OPTIONAL { $this rdf:type ?t . ?t eo:upperClass true }
+        OPTIONAL { $this rdfs:subClassOf ?super }
+        OPTIONAL { $this a owl:NamedIndividual . BIND(true AS ?named) }
+      } GROUP BY $this HAVING (COUNT(DISTINCT ?t) != 1 || COUNT(?super) > 0 || COUNT(?named) = 0)""" ] .
+
+eosh:IdentifierShape
+  a sh:NodeShape ;
+  sh:targetSubjectsOf eo:entityKind ;
+  sh:severity sh:Info ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "Individual has no external identifier (owl:sameAs Wikidata or skos:exactMatch authority IRI)." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this WHERE {
+        $this eo:entityKind "individual" .
+        FILTER NOT EXISTS { $this owl:sameAs ?wd }
+        FILTER NOT EXISTS { $this skos:exactMatch ?iri }
+      }""" ] .
+
+eosh:WikidataShape
+  a sh:NodeShape ;
+  sh:targetSubjectsOf owl:sameAs ;
+  sh:property [
+    sh:path owl:sameAs ; sh:nodeKind sh:IRI ;
+    sh:pattern "^http://www\\.wikidata\\.org/entity/Q[1-9][0-9]*$" ;
+    sh:message "owl:sameAs must point to a Wikidata entity IRI (http://www.wikidata.org/entity/Q...)." ] .
+
+eosh:DisjointnessShape
+  a sh:NodeShape ;
+  sh:targetSubjectsOf eo:entityKind ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "Entity is an instance or subclass of two disjoint core classes (Party / Asset / LegalExtension)." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT DISTINCT $this WHERE {
+        { $this rdf:type/rdfs:subClassOf* ?a } UNION { $this rdfs:subClassOf+ ?a }
+        { $this rdf:type/rdfs:subClassOf* ?b } UNION { $this rdfs:subClassOf+ ?b }
+        ?a eo:coreClass true . ?b eo:coreClass true .
+        FILTER (?a != ?b)
+      }""" ] .
+
+eosh:IsolatedEntityShape
+  a sh:NodeShape ;
+  sh:targetSubjectsOf eo:entityKind ;
+  sh:severity sh:Warning ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "Entity is not used by any rule or relationship." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this WHERE {
+        FILTER NOT EXISTS { ?r odrl:assignee|odrl:assigner|odrl:target $this }
+        FILTER NOT EXISTS { $this ?p ?o . ?p a owl:ObjectProperty . ?o eo:entityKind ?k1 }
+        FILTER NOT EXISTS { ?s ?p2 $this . ?p2 a owl:ObjectProperty . ?s eo:entityKind ?k2 }
+      }""" ] .
+
+# ---------------------------------------------------------------- ODRL rules
+eosh:RuleShape
+  a sh:NodeShape ;
+  sh:targetClass odrl:Permission , odrl:Prohibition , odrl:Duty ;
+  sh:property [
+    sh:path odrl:action ; sh:minCount 1 ; sh:maxCount 1 ; sh:class odrl:Action ;
+    sh:message "A rule needs exactly one odrl:action that is an odrl:Action." ] ;
+  sh:property [
+    sh:path odrl:assignee ; sh:minCount 1 ;
+    sh:message "A rule needs an odrl:assignee (the party holding the permission, prohibition or duty)." ] ;
+  sh:property [
+    sh:path odrl:target ; sh:maxCount 1 ;
+    sh:message "A rule has at most one odrl:target." ] ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "Rule is not attached to any odrl:Policy." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this WHERE {
+        FILTER NOT EXISTS { ?policy odrl:permission|odrl:prohibition|odrl:obligation $this }
+      }""" ] ;
+  .
+
+# Modelling-quality checks on rules: reported as warnings (need a human decision).
+# Severity is set on the shape, which is where SHACL reads it from.
+eosh:RuleQualityShape
+  a sh:NodeShape ;
+  sh:targetClass odrl:Permission , odrl:Prohibition , odrl:Duty ;
+  sh:severity sh:Warning ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "odrl:assignee is not typed Party." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this ?value WHERE {
+        $this odrl:assignee ?value .
+        FILTER NOT EXISTS { ?value eo:coreType "Party" }
+      }""" ] ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "odrl:target is a Party; the target is what the action applies to." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this ?value WHERE {
+        $this odrl:target ?value .
+        ?value eo:coreType "Party" .
+      }""" ] ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "Duty or prohibition taken from a recital (recitals are not binding)." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this WHERE {
+        { $this a odrl:Duty } UNION { $this a odrl:Prohibition }
+        $this eo:provision "recital" .
+      }""" ] .
+
+eosh:ActionShape
+  a sh:NodeShape ;
+  sh:targetClass odrl:Action ;
+  sh:property [
+    sh:path odrl:includedIn ; sh:minCount 1 ; sh:severity sh:Warning ;
+    sh:message "Action is outside the controlled vocabulary (no odrl:includedIn parent)." ] .
+
+eosh:ConstraintShape
+  a sh:NodeShape ;
+  sh:targetClass odrl:Constraint ;
+  sh:property [
+    sh:path odrl:leftOperand ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+    sh:message "A constraint needs exactly one odrl:leftOperand IRI." ] ;
+  sh:property [
+    sh:path odrl:operator ; sh:minCount 1 ; sh:maxCount 1 ;
+    sh:in ( odrl:eq odrl:neq odrl:lt odrl:lteq odrl:gt odrl:gteq odrl:isA odrl:isPartOf
+            odrl:isAnyOf odrl:isAllOf odrl:isNoneOf odrl:hasPart ) ;
+    sh:message "odrl:operator must be one of the ODRL 2.2 operators." ] ;
+  sh:property [
+    sh:path odrl:rightOperand ; sh:minCount 1 ; sh:maxCount 1 ;
+    sh:message "A constraint needs exactly one odrl:rightOperand." ] ;
+  sh:property [
+    sh:path odrl:rightOperand ; sh:minLength 1 ;
+    sh:message "odrl:rightOperand is empty." ] .
+
+eosh:ConstraintQualityShape
+  a sh:NodeShape ;
+  sh:targetClass odrl:Constraint ;
+  sh:severity sh:Warning ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "dateTime constraint whose right operand is not an xsd:date." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this ?value WHERE {
+        $this odrl:leftOperand odrl:dateTime ; odrl:rightOperand ?value .
+        FILTER (datatype(?value) != <http://www.w3.org/2001/XMLSchema#date>)
+      }""" ] ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "Constraint uses the fallback 'condition' operand (free-text condition)." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this WHERE { $this odrl:leftOperand eo:condition . }""" ] .
+
+eosh:PolicyShape
+  a sh:NodeShape ;
+  sh:targetClass odrl:Set ;
+  sh:property [ sh:path odrl:uid ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] .
+
+# ---------------------------------------------------------------- relationships
+eosh:RelationshipEndpointShape
+  a sh:NodeShape ;
+  sh:targetSubjectsOf eo:entityKind ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "Object-property assertion points to a resource that is not a defined entity." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this ?path ?value WHERE {
+        $this ?path ?value .
+        ?path a owl:ObjectProperty .
+        FILTER NOT EXISTS { ?value eo:entityKind ?k }
+      }""" ] .

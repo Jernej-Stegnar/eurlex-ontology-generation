@@ -21,6 +21,8 @@ dependencies = [
     "ollama>=0.6.2",
     "networkx>=3.4.2",
     "filelock>=4.0.9",
+    "rdflib>=7.0",
+    "pyshacl>=0.26",
 ]
 
 [project.scripts]
@@ -29,6 +31,10 @@ eurlex-ontology-generation = "eurlex_ontology_generation.__main__:main"
 [project.entry-points."kedro.hooks"]
 
 [project.optional-dependencies]
+# OWL 2 reasoning (HermiT) in the ontology_export pipeline; needs a Java runtime
+reasoner = [
+    "owlready2>=0.46",
+]
 dev = [
     "pytest-cov>=3,<7",
     "pytest-mock>=1.7.1, <2.0",
