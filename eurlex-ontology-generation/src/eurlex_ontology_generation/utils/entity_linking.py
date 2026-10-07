@@ -84,8 +84,10 @@ class Gazetteer:
         self._index: dict[str, str] = {}
         for e in entries:
             self._index[entity_key(e.name)] = e.name
+        self.surface_forms: dict[str, list[str]] = {e.name: [] for e in entries}
         for alias, canonical in aliases.items():
             self._index.setdefault(entity_key(alias), canonical)
+            self.surface_forms.setdefault(canonical, []).append(alias)
 
     def lookup(self, name: Any) -> GazetteerEntry | None:
         canonical = self._index.get(entity_key(name))

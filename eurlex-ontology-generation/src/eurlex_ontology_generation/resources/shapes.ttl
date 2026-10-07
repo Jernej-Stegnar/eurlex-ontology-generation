@@ -5,8 +5,8 @@
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @prefix odrl: <http://www.w3.org/ns/odrl/2/> .
-@prefix eo:   <http://example.org/eurlex-odrl/ontology#> .
-@prefix eosh: <http://example.org/eurlex-odrl/shapes#> .
+@prefix eo:   <https://w3id.org/eurlex-odrl/ontology#> .
+@prefix eosh: <https://w3id.org/eurlex-odrl/shapes#> .
 
 # SHACL shapes for the exported EurLex ODRL ontology.
 #
@@ -19,7 +19,7 @@
 # validator rewrites it automatically when a different base IRI is configured.
 
 eosh: sh:declare [
-    sh:prefix "eo" ; sh:namespace "http://example.org/eurlex-odrl/ontology#"^^xsd:anyURI ] ,
+    sh:prefix "eo" ; sh:namespace "https://w3id.org/eurlex-odrl/ontology#"^^xsd:anyURI ] ,
   [ sh:prefix "odrl" ; sh:namespace "http://www.w3.org/ns/odrl/2/"^^xsd:anyURI ] ,
   [ sh:prefix "owl" ; sh:namespace "http://www.w3.org/2002/07/owl#"^^xsd:anyURI ] ,
   [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] ,

@@ -1,0 +1,29 @@
+# w3id.org redirects for https://w3id.org/eurlex-odrl/
+# Source of the published files: https://github.com/jmrozanec/eurlex-ontology-generation (branch main)
+#
+#   https://w3id.org/eurlex-odrl/ontology      ontology (TBox + ABox + ODRL policy), Turtle
+#   https://w3id.org/eurlex-odrl/ontology#X    terms of the project vocabulary (same document)
+#   https://w3id.org/eurlex-odrl/entity/X      classes and individuals (same document)
+#   https://w3id.org/eurlex-odrl/action/X      canonical ODRL actions (same document)
+#   https://w3id.org/eurlex-odrl/policy/X      the ODRL policy and its rules (same document)
+#   https://w3id.org/eurlex-odrl/shapes        SHACL shapes, Turtle
+#
+# RDF clients (Accept: text/turtle, application/n-triples, application/rdf+xml,
+# application/ld+json) get the Turtle file; browsers get the documentation.
+
+Options +FollowSymLinks
+RewriteEngine on
+
+# --- SHACL shapes
+RewriteCond %{HTTP_ACCEPT} (text/turtle|application/n-triples|application/rdf\+xml|application/ld\+json) [NC]
+RewriteRule ^shapes/?$ https://raw.githubusercontent.com/jmrozanec/eurlex-ontology-generation/main/eurlex-ontology-generation/src/eurlex_ontology_generation/resources/shapes.ttl [R=303,L]
+RewriteRule ^shapes\.ttl$ https://raw.githubusercontent.com/jmrozanec/eurlex-ontology-generation/main/eurlex-ontology-generation/src/eurlex_ontology_generation/resources/shapes.ttl [R=303,L]
+RewriteRule ^shapes/?$ https://github.com/jmrozanec/eurlex-ontology-generation/blob/main/eurlex-ontology-generation/src/eurlex_ontology_generation/resources/shapes.ttl [R=303,L]
+
+# --- ontology, entities, actions, policy: one Turtle document
+RewriteCond %{HTTP_ACCEPT} (text/turtle|application/n-triples|application/rdf\+xml|application/ld\+json) [NC]
+RewriteRule ^(ontology|entity/.+|action/.+|policy/.+)?$ https://raw.githubusercontent.com/jmrozanec/eurlex-ontology-generation/main/eurlex-ontology-generation/data/07_model_output/eurlex_odrl_ontology.ttl [R=303,L]
+RewriteRule ^ontology\.ttl$ https://raw.githubusercontent.com/jmrozanec/eurlex-ontology-generation/main/eurlex-ontology-generation/data/07_model_output/eurlex_odrl_ontology.ttl [R=303,L]
+
+# --- everything else (browsers): documentation
+RewriteRule ^.*$ https://github.com/jmrozanec/eurlex-ontology-generation/blob/main/eurlex-ontology-generation/QUALITY_HARNESS.md [R=303,L]

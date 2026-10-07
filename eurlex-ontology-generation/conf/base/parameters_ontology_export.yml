@@ -9,9 +9,10 @@ ontology_export:
   turtle_path: data/07_model_output/eurlex_odrl_ontology.ttl
   shacl_report_path: data/08_reporting/shacl_report.ttl
   summary_path: data/08_reporting/ontology_export_summary.json
-  # Namespace for the project's IRIs. example.org is a placeholder: replace it
-  # with a namespace you control (e.g. a w3id.org redirect) before publishing.
-  base_iri: "http://example.org/eurlex-odrl/"
+  # Persistent namespace for the project's IRIs (w3id.org). The redirect rules
+  # live in publish/w3id/eurlex-odrl/ and must be submitted as a pull request
+  # to https://github.com/perma-id/w3id.org before the IRIs resolve.
+  base_iri: "https://w3id.org/eurlex-odrl/"
   shapes_path: null          # null = packaged resources/shapes.ttl
   vocabulary_path: null
   # true: the pipeline fails when SHACL reports any sh:Violation (use in CI).

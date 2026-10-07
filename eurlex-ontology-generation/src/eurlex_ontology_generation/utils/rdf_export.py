@@ -39,7 +39,9 @@ from .vocabulary import Vocabulary, load_vocabulary, parse_date
 ODRL = Namespace("http://www.w3.org/ns/odrl/2/")
 WD = Namespace("http://www.wikidata.org/entity/")
 EU_CURRENCY = Namespace("http://publications.europa.eu/resource/authority/currency/")
-DEFAULT_BASE_IRI = "http://example.org/eurlex-odrl/"
+DEFAULT_BASE_IRI = "https://w3id.org/eurlex-odrl/"
+ONTOLOGY_VERSION = "0.1.0"
+SOURCE_REPOSITORY = "https://github.com/jmrozanec/eurlex-ontology-generation"
 
 CORE_CLASS_LOCAL = {"Party": "Party", "Asset": "Asset", "Legal_extension": "LegalExtension"}
 RULE_CLASS = {"permissions": ODRL.Permission, "prohibitions": ODRL.Prohibition, "duties": ODRL.Duty}
@@ -81,6 +83,9 @@ def build_tbox(g: Graph, ns: dict, vocab: Vocabulary) -> None:
     eo = ns["eo"]
     onto = URIRef(str(eo).rstrip("#"))
     g.add((onto, RDF.type, OWL.Ontology))
+    g.add((onto, OWL.versionInfo, Literal(ONTOLOGY_VERSION)))
+    g.add((onto, OWL.versionIRI, URIRef(f"{str(eo).rstrip('#')}/{ONTOLOGY_VERSION}")))
+    g.add((onto, DCTERMS.source, URIRef(SOURCE_REPOSITORY)))
     g.add((onto, RDFS.label, Literal("EurLex ODRL ontology", lang="en")))
     g.add((onto, RDFS.comment, Literal(
         "Ontology extracted from EUR-Lex with an LLM pipeline, refined and aligned to ODRL 2.2.", lang="en")))

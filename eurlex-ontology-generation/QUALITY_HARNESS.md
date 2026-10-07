@@ -65,8 +65,37 @@ uv run python scripts/evaluate_ontology.py \
 ```
 Reports typing, kind, leakage, action/constraint/relation control,
 consistency, linking and review approval per round, plus gold-set accuracy.
-`conf/base/evaluation/gold_entities.yml` is a **seed** written with the
-harness; replace it with expert annotations before trusting its numbers.
+
+### Avoiding circular numbers
+The gazetteer, keyword typer and seed gold set were written together, so any
+score that compares one of them with another proves nothing. The evaluation
+therefore separates:
+
+| Number | What it compares | Evidence? |
+|---|---|---|
+| `typing.pct_known_entities_correct_type` | entity types vs gazetteer facts, **excluding entities the gazetteer typed** | yes on raw generator output; not reported (`null`) on the refined ontology, where every known entity was typed by the lookup |
+| Held-out typer test (`typer_ablation`) | the deterministic typer with the gazetteer **switched off**, on every gazetteer name and alias | yes: the gazetteer's labels are facts about the world, not typer output |
+| Gold `held_out` | independent labels (blind annotation sheets or `source: expert`) on entities **not** typed by the gazetteer | yes, this is the headline accuracy |
+| Gold `gazetteer_lookups` | independent labels on gazetteer-typed entities | checks the gazetteer's content only |
+| Gold `seed_smoke_test` | `conf/base/evaluation/gold_entities.yml` (`source: seed`) | no: regression test only |
+
+Held-out typer result on the current vocabulary, measured once and not tuned
+afterwards: **19% of the 95 canonical gazetteer names get the right core type
+from keywords alone** (6% of countries, 64% of funds). The refined ontology's
+correct typing of known entities comes from the gazetteer, and unknown named
+entities depend on the generator's declared type plus the keyword fallback,
+which is weak. Only blind annotation can measure that path:
+
+```bash
+uv run python scripts/make_annotation_sheet.py --n 120 --annotator A   # same seed -> same sample
+uv run python scripts/make_annotation_sheet.py --n 120 --annotator B
+# two people fill type / is_a / kind from the text (the sheet hides our labels), then:
+uv run python scripts/evaluate_ontology.py data/07_model_output/eurlex_odrl_ontology_refined.json \
+  --gold data/08_reporting/annotation/annotation_sheet_A.csv \
+  --agreement data/08_reporting/annotation/annotation_sheet_A.csv data/08_reporting/annotation/annotation_sheet_B.csv
+```
+Report held-out accuracy only together with inter-annotator kappa; adjudicate
+disagreements into a third sheet with `source` = `adjudicated`.
 
 ## OWL/ODRL export and validation
 `uv run kedro run --pipelines ontology_export` (also run by
@@ -85,9 +114,18 @@ domain classes are `owl:Class` + `rdfs:subClassOf` an upper class; individuals
 are `owl:NamedIndividual` typed with an upper class, `owl:sameAs` their Wikidata
 item and `skos:exactMatch` their EU Vocabularies IRI. Rules are
 `odrl:Permission/Prohibition/Duty` in one `odrl:Set`, with typed constraints
-(`xsd:date`, `xsd:decimal`, `odrl:unit` = EU currency IRI). `base_iri` is a
-placeholder (`http://example.org/eurlex-odrl/`): set a namespace you control
-before publishing.
+(`xsd:date`, `xsd:decimal`, `odrl:unit` = EU currency IRI).
+
+### Namespace
+IRIs live under the persistent namespace `https://w3id.org/eurlex-odrl/`
+(`ontology#` vocabulary, `entity/`, `action/`, `policy/`, `shapes#`). To make
+them resolve:
+1. merge this branch into `main` (the redirects point at files on `main`);
+2. fork https://github.com/perma-id/w3id.org, copy `publish/w3id/eurlex-odrl/`
+   (`.htaccess` + `README.md`) to the root of the fork as `eurlex-odrl/`, and
+   open a pull request.
+RDF clients are then redirected (303) to the Turtle files, browsers to this
+document.
 
 SHACL severities: **Violation** = structurally broken (rule without action or
 assignee, non-ODRL operator, entity under two disjoint core classes, core type

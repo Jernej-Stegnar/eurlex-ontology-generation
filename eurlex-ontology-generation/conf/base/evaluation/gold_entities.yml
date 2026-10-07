@@ -10,6 +10,12 @@
 # Fields: name (+ optional aliases), type (Party | Asset | Legal_extension),
 # is_a (upper ontology class), kind (class | individual).
 
+# Every entry below is a seed label (source: seed). The evaluation reports
+# them only as a smoke test and never as accuracy. Independent labels come
+# from blind annotation sheets (scripts/make_annotation_sheet.py) or entries
+# marked `source: expert`.
+source: seed
+
 entities:
   # individuals known to the gazetteer
   - {name: European_Commission, type: Party, is_a: EUInstitution, kind: individual}

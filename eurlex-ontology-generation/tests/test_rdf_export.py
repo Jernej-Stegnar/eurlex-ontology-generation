@@ -155,3 +155,10 @@ def test_reasoner_detects_disjointness_violation(graph):
     g.add((ENT["European_Union_Solidarity_Fund"], RDF.type, EO.Country))   # Fund and Country: disjoint
     bad = reasoner_check(g)
     assert bad["consistent"] is False
+
+
+def test_iris_use_the_w3id_namespace(graph):
+    g = graph[0]
+    onto = URIRef("https://w3id.org/eurlex-odrl/ontology")
+    assert (onto, RDF.type, OWL.Ontology) in g
+    assert not any("example.org" in str(t) for triple in g for t in triple)

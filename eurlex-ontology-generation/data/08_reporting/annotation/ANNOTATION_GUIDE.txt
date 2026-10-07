@@ -1,0 +1,6 @@
+type   Party (an actor) | Asset (a thing acted upon: legal act, fund, money, programme, resource, document)
+       | Legal_extension (procedure, measure, event, sector, other legal concept)
+is_a   one upper class: EUInstitution, EUBody, Country, InternationalOrganisation, PublicAuthority, Undertaking, NaturalPerson, PartyRole, LegalAct, Agreement, Fund, FinancialInstrument, Programme, Resource, Document, Procedure, Measure, Event, Sector, Concept
+kind   individual (ONE named thing: a country, an institution, a named fund)
+       | class (a KIND of thing: Member State, application, financial contribution)
+Leave a cell empty if the text does not let you decide; use `notes` for doubts.

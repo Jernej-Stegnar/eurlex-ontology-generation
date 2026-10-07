@@ -1,0 +1,121 @@
+item,name,description,context_1,context_2,type,is_a,kind,notes,annotator,source
+1,ElectronicCommunicationNetwork,Electronic communication network subject to the directive,,,,,,,A,annotator
+2,ElectronicCommunicationServiceProvider,Party that provides an electronic communication service,,,,,,,A,annotator
+3,DigitalBroadcastingRoadmap,A digital terrestrial broadcasting roadmap adopted by a Member State,,,,,,,A,annotator
+4,SkillsGaps,Represents the differences between the skills required and the skills possessed.,,,,,,,A,annotator
+5,Belgium,The country applying for the EGF mobilization | Belgium,,,,,,,A,annotator
+6,FundingRecipient,An individual or organization receiving funding from PRIMA-IS,,,,,,,A,annotator
+7,Independent_Experts,Independent experts assisting with evaluations,,,,,,,A,annotator
+8,SolidarityFundApplication,An application submitted to mobilize the European Union Solidarity Fund | An application for the mobilization of the European Union Solidarity Fund | An application for a financial contribution from the European Union Solidarity Fund,"On 17 July 2017, Portugal submitted its initial application for a contribution from the Fund following severe fires that broke out on 17 June 2017.",,,,,,A,annotator
+9,CulturalHeritageFunding,A funding arrangement for the European Year of Cultural Heritage.,,,,,,,A,annotator
+10,IMF,The International Monetary Fund.,,,,,,,A,annotator
+11,SkillAssessmentTool,A tool for assessing skills and qualifications,"(24) Union tools for skills and qualifications should adapt to changing practices and advances in technology in order to ensure they remain relevant and beneficial to users. This should be achieved by, among other things, creating innovative features, such as interactive tools, editing and design of",,,,,,A,annotator
+12,SkillAssessmentTool_Access,Access to a skill assessment tool,,,,,,,A,annotator
+13,PRIMA_Financing_Organization,An organization that is eligible to participate in PRIMA and is approved by PRIMA-IS,"In order to achieve the objectives of PRIMA, any other third country not associated to Horizon 2020, in particular Southern Mediterranean countries, should be able to participate if it commits to contributing to the financing of PRIMA and if PRIMA-IS approves its participation.",,,,,,A,annotator
+14,PRIMAIS_Funding_Administrative_Burden,Administrative burden reduction for recipients,,,,,,,A,annotator
+15,PolicyHolder,Entity representing the holder of a policy,,,,,,,A,annotator
+16,PRIMA_Participation,A participation in PRIMA activities by a legal entity,,,,,,,A,annotator
+17,Moldova_Reform_Roadmap,Legal framework for Moldova's reform roadmap and related financial assistance,,,,,,,A,annotator
+18,EmploymentDecisionTool,A tool for making decisions on employment and learning opportunities,"(24) Union tools for skills and qualifications should adapt to changing practices and advances in technology in order to ensure they remain relevant and beneficial to users. This should be achieved by, among other things, creating innovative features, such as interactive tools, editing and design of",,,,,,A,annotator
+19,SkillDocumentationTool_Access,Access to a skill documentation tool,,,,,,,A,annotator
+20,Portugal,Portugal. | Portugal | Portugal as a beneficiary of the Solidarity Fund.,,,,,,,A,annotator
+21,SkillDocumentationTool,A tool for documenting skills and qualifications,"(24) Union tools for skills and qualifications should adapt to changing practices and advances in technology in order to ensure they remain relevant and beneficial to users. This should be achieved by, among other things, creating innovative features, such as interactive tools, editing and design of",,,,,,A,annotator
+22,PRIMAIS_Funding_Action,An action taken by PRIMA-IS in accordance with the obligations set forth in the Decision,,,,,,,A,annotator
+23,FinancialAssistance,Represents the financial assistance provided to the Republic of Moldova,,,,,,,A,annotator
+24,CooperationAgreement,Agreements with third countries and international organizations,,,,,,,A,annotator
+25,Financial_service_activities,Financial service activities as defined in the text.,,,,,,,A,annotator
+26,UnionFunds,The funds provided by the Union,,,,,,,A,annotator
+27,EuropassTool,"A tool provided by the Europass online platform for documenting and describing personal information, skills, and qualifications.",,,,,,,A,annotator
+28,Assignor,The party determining the financial contribution.,,,,,,,A,annotator
+29,PolicyDocument,A document related to policy creation and poverty reduction.,,,,,,,A,annotator
+30,EGF_Mobilization_Applicant,The entity applying for EGF mobilization.,"The European Commission, Whereas: (3) On 9 May 2017, Italy submitted an application to mobilise the EGF, in respect of redundancies in Almaviva Contact SpA in Italy.",,,,,,A,annotator
+31,Germany,"Germany | Germany, the party to whom the EGF mobilization applies.",,,,,,,A,annotator
+32,CommissionDecisionHolder,Entity representing the holder of a Commission Decision,,,,,,,A,annotator
+33,CivilApplication,A civil application related to PRIMA activities.,"Regulation (EU) No 1291/2013 identified Food security, sustainable agriculture and forestry, marine, maritime and inland water research, and the bioeconomy and Climate action, environment, resource efficiency and raw materials as two of the priority societal challenges to be addressed by supporting ",,,,,,A,annotator
+34,RegulatoryAuthority,An authority responsible for regulating spectrum resources,"In his report to the Commission, Pascal Lamy, the Chairman of the high-level group on the future use of the UHF band (470-790 MHz), recommended that the 700 MHz frequency band be made available for wireless broadband by 2020 (+/- two years).",,,,,,A,annotator
+35,Trustees,Represents the Board of Trustees as a party.,The Board of Trustees shall establish the Secretariat of PRIMA-IS as the executive body of PRIMA. The Secretariat shall: (a) implement the annual work plan; (b) provide support to the other bodies of PRIMA-IS; (c) monitor and report on the implementation of PRIMA; (d) manage the Union financial cont,,,,,,A,annotator
+36,GuidanceFramework,A document or product related to the Guidance Framework,,,,,,,A,annotator
+37,Council,The Council of the European Union | The European Council. | The European Council,,,,,,,A,annotator
+38,Grant_Decision,Decision subject to audit,,,,,,,A,annotator
+39,EndUser,"Represents the individual end-users, such as learners, job seekers, workers and volunteers.",,,,,,,A,annotator
+40,EnergyUnionAgreement,An intergovernmental agreement related to energy matters,"The Decision should apply to intergovernmental agreements. Intergovernmental agreements express, in particular in their content, and regardless of their formal designation, the intention of the parties that the agreement should have binding force, entirely or in part. Only intergovernmental agreemen",,,,,,A,annotator
+41,Participants,Entities participating in PRIMA-IS activities,,,,,,,A,annotator
+42,Stakeholder,"Stakeholder represents an entity involved in the SkillFormationFramework. | Other relevant parties involved in the development and implementation of the Europass framework. | Represents the relevant stakeholders, such as education and training providers, guidance practitioners, employers, public employment services, social partners, youth work providers, youth organisations and policy makers.","(4) Decision No 2241/2004/EC of the European Parliament and of the Council (3) established a framework to address the challenges relating to job seeking, engaging in learning and career management.",,,,,,A,annotator
+43,NotificationRequirement,A requirement for Member States to notify intergovernmental agreements to the Commission,By 3 August 2017 Member States shall notify to the Commission all existing intergovernmental agreements...,,,,,,A,annotator
+44,Mobile_Virtual_Network_Operators,Mobile network operators that utilize virtualized network infrastructure.,,,,,,,A,annotator
+45,PRIMA,A public-public partnership programme under the PRIMA Regulation. | Represents the legal resource or document related to PRIMA. | Represents the parties involved in the legal framework of PRIMA.,"PRIMA should support all types of research and innovation activities, including research, development and innovation projects, innovative demonstrators and pilot plants, capacity building, training, awareness-raising and dissemination actions, and researcher mobility, addressing a wide range of Tech",PRIMA activities should be in line with the objectives and research and innovation priorities of Horizon 2020 and with the general principles and conditions laid down in Article 26 of Regulation (EU) No 1291/2013.,,,,,A,annotator
+46,Organisation,Represents an organisation involved in the Europass system,,,,,,,A,annotator
+47,MemberStateAction,A duty for Member States to take necessary steps to minimise the duration and geographical extent of limitations on the use of the 700 MHz frequency band.,,,,,,,A,annotator
+48,TechnicalAssistance,Technical assistance at the initiative of the Commission,,,,,,,A,annotator
+49,Contractor,Party obligated to impose acceptance of audit powers,,,,,,,A,annotator
+50,PRIMAISProposal,A proposal for funding actions under PRIMA-IS,"PRIMA-IS should provide financial support mainly in the form of grants to participants, for actions funded by PRIMA-IS.",,,,,,A,annotator
+51,EGF_Mobilization,A mobilization of the European Globalization Adjustment Fund (EGF) as per Regulation (EU) No 1309/2013. | A mobilization of the European Globalisation Adjustment Fund (EGF) following an application from Portugal. | A mobilization of the European Globalisation Adjustment Fund (EGF) following an application from the Netherlands.,,,,,,,A,annotator
+52,UkrainianAuthorities,The Ukrainian authorities,,,,,,,A,annotator
+53,Union_financial_contribution,The Union's financial contribution to the PRIMA program,,,,,,,A,annotator
+54,EnergyUnionStrategy,A strategy adopted by the Commission to ensure energy security,,,,,,,A,annotator
+55,Mining_of_coal_and_lignite,Mining of coal and lignite in the region of Castilla y León,"On 20 January 2017 Spain submitted an application to mobilise the EGF, in respect of redundancies in the economic sector classified under the Statistical classification of economic activities in the European Community (NACE) Revision 2 Division 5 (Mining of coal and lignite)",,,,,,A,annotator
+56,EGF_Mobilisation_Decision,A decision to mobilise the EGF for a specific amount and application | A decision to mobilize the European Globalization Adjustment Fund (EGF) for a financial contribution. | Decision to mobilize the EGF,,,,,,,A,annotator
+57,MacroFinancialAssistanceCommittee,A committee within the meaning of Regulation (EU) No 182/2011 assisting in the implementation of macro-financial assistance,,,,,,,A,annotator
+58,France,"The country where the redundancies occurred. | France, as the applicant for EGF mobilization. | France as a beneficiary of the Solidarity Fund.","THE EUROPEAN PARLIAMENT AND THE COUNCIL OF THE EUROPEAN UNION, Having regard to the proposal from the European Commission, Whereas:","(4) The EGF should, therefore, be mobilised in order to provide a financial contribution of EUR 9 894 483 in respect of the application submitted by France.",,,,,A,annotator
+59,EnergyDecision,Represents the Energy Decision as a legal instrument,,,,,,,A,annotator
+60,LegalAgreement,"A legally binding agreement between Member States and third countries or international organizations | A legal agreement or amendment, including any annexes thereto.",,,,,,,A,annotator
+61,PRIMA_Funding_Access,Access to funding under PRIMA | Access to funding for eligible entities,"ould have the right to terminate, reduce or suspend the Union financial contribution if PRIMA is implemented inadequately, partially or late, or if the Participating States do not contribute, or contribute partially or late, to the financing of PRIMA.","eated under Union law, or international European interest organisations, are eligible for funding.",,,,,A,annotator
+62,Spectrum,Represents the radio frequency spectrum itself as a public good. | The spectrum allocated for wireless communications,Spectrum,,,,,,A,annotator
+63,Decision,A legal decision made by the European Union | Represents the Decision (EU) 2019/277 | A decision made by the European Parliament and Council,"(6) Since the amount that may be mobilised for 2017 is not sufficient to cover the full contribution, the difference should exceptionally be financed through the annual amount available for 2018 as provided for in Article 10(2) of Regulation (EU, Euratom) No 1311/2013. (7) In order to minimise the t",,,,,,A,annotator
+64,CulturalHeritageProtection,Legal framework for the European Year of Cultural Heritage,,,,,,,A,annotator
+65,Agreement,Represents the Agreement document related to PRIMA.,,,,,,,A,annotator
+66,EuropeanInstitution,"Represents the European Parliament, Council, and European External Action Service | Represents the European Commission, European Parliament, Council, and Court of Auditors.","Commission, Court of Auditors",,,,,,A,annotator
+67,Finland,The country Finland | Finland | The country submitting the application for EGF funding.,,,,,,,A,annotator
+68,Digital_Spectrum,"Represents a digital spectrum asset, specifically the 470-790 MHz frequency band.","ledge, is an important aspect that has to be a priority, without creating new divides when users take up new technologies. (3) Effective management of spectrum is a condition for the industrial shift to 5G, which would put the Union at the centre of innovation and create a favourable environment for",,,,,,A,annotator
+69,EuropassUser,"A natural person who uses the Europass online platform to document and describe personal information, skills, and qualifications.",,,,,,,A,annotator
+70,Spain,Spain as a beneficiary of the Solidarity Fund. | Spain | The country of Spain.,"Spain submitted an application to mobilise the EGF, in respect of redundancies in the economic sector classified under the Statistical classification of economic activities in the European Community (NACE) Revision 2 Division 5 (Mining of coal and lignite) in the region of Castilla y León.",,,,,,A,annotator
+71,SolidarityFundDecision,A decision to mobilize the European Union Solidarity Fund,,,,,,,A,annotator
+72,CivilSocietyOrganizations,Organizations involved in cultural heritage management and promotion,"In addition, in its conclusions of 25 November 2014, the Council invited the Commission to consider presenting a proposal for a European Year of Cultural Heritage. Such governance and cooperation involve all stakeholders, including public authorities, the cultural heritage sector, private actors and",,,,,,A,annotator
+73,Bulgaria,The country of Bulgaria,,,,,,,A,annotator
+74,Arrangements,Represents the arrangements for the validation of non-formal and informal learning.,,,,,,,A,annotator
+75,ElectronicCommunicationNetworkOperator,Party that operates an electronic communication network,,,,,,,A,annotator
+76,Latvia,The country of Latvia,,,,,,,A,annotator
+77,PRIMA_Financing_Contributor,An organization that contributes financially to PRIMA,The Union financial contribution should be subject to formal commitments from the Participating States to contribute to the financing of PRIMA and to the fulfilment and implementation of those commitments in accordance with this Decision.,,,,,,A,annotator
+78,NonBindingInstrument,A non-binding instrument submitted to the Commission | A non-binding instrument or amendment to a non-binding instrument,"Member States establish relations with third countries not only by concluding intergovernmental agreements, but also in the form of non-binding instruments, which are often formally designated as memorandums of understanding, joint declarations, ministerial joint declarations, joint actions, joint c",,,,,,A,annotator
+79,SkillFormationFramework,SkillFormationFramework represents a decision and framework related to skills formation.,,,,,,,A,annotator
+80,ModelClause,A model clause or guidance for intergovernmental agreements in the energy sector,,,,,,,A,annotator
+81,European_Year_Coordination,A coordination activity related to the European Year,,,,,,,A,annotator
+82,SolidarityFundMobilization,The act of mobilizing the European Union Solidarity Fund | A mobilization of the European Union Solidarity Fund,"On 11 January 2018, Bulgaria submitted an application to mobilize the Fund, following a flooding caused by intense rainfall and violent storms of 25 and 26 October 2017.","THE EUROPEAN PARLIAMENT AND THE COUNCIL OF THE EUROPEAN UNION, Having regard to the mobilisation of the European Union Solidarity Fund to provide assistance to Greece, Spain, France and Portugal",,,,,A,annotator
+83,Cyprus_Territory,The territory of Cyprus,,,,,,,A,annotator
+84,ParticipatingState,States participating in the PRIMA program | The state participating in the PRIMA-IS program. | States participating in the PRIMA program.,"2. Algeria, Egypt, Jordan, Lebanon and Morocco shall become Participating States subject to the conclusion of international agreements for scientific and technological cooperation with the Union setting out the terms and conditions of their participation in PRIMA.","3. Any Member State and any third country associated to Horizon 2020, other than one listed in paragraph 1 of this Article, may participate in PRIMA provided that it fulfils the condition laid down in point (c) of Article 4(1) and complies, in particular, with Article 11(5).",,,,,A,annotator
+85,EU_Financial_Regulation,The EU Financial Regulation,,,,,,,A,annotator
+86,Cyprus_Government,The government of Cyprus,,,,,,,A,annotator
+87,PRIMA_Activity,A specific activity within the PRIMA programme,,,,,,,A,annotator
+88,FinancialGuarantor,An entity providing financial guarantees for the Implementation Structure.,,,,,,,A,annotator
+89,MigrationMeasures,"Measures addressing migration, refugee inflows, and security threats | Measures related to migration, refugees, and security threats. | Specific measures related to migration, refugee inflows and security threats",,,,,,,A,annotator
+90,MacroFinancialAssistance,Macro-financial assistance provided by the European Union to Ukraine | Macro-financial assistance provided to Ukraine | Macro-financial assistance provided by the Union to Ukraine,"e National Bank of Ukraine. Subject to the provisions to be agreed in the Memorandum of Understanding, including a confirmation of residual budgetary financing needs, the Union funds may be transferred to the Ukrainian Ministry of Finance as the final beneficiary.","The Union's macro-financial assistance should also include measures to support the implementation of the Association Agreement, including the DCFTA.",,,,,A,annotator
+91,FinancialContribution,A financial contribution provided by the Solidarity Fund to a region,EUR-Lex text: 28.11.2018 EN Official Journal of the European Union LI 302/1 DECISION (EU) 2018/1859 OF THE EUROPEAN PARLIAMENT AND OF THE COUNCIL of 14 November 2018 on the mobilisation of the European Union Solidarity Fund to provide assistance to Latvia,,,,,,A,annotator
+92,PRIMAIS_Funding_Monitoring,Monitoring of entities receiving funding,"Audits of recipients of Union funds provided in accordance with this Decision should ensure a reduction of the administrative burden, in accordance with Regulation (EU) No 1291/2013.",,,,,,A,annotator
+93,United_Kingdom,The United Kingdom of Great Britain and Northern Ireland,,,,,,,A,annotator
+94,PRIMA_Financing_Participant,An organization that participates in PRIMA,"Furthermore, Participating States should contribute financially or in kind to activities implemented without the Union financial contribution and to the administrative budget of PRIMA-IS not covered by the Union financial contribution.",,,,,,A,annotator
+95,European_Commission,Represents the European Commission | The European Commission | The European Commission.,"In so doing, the Commission shall coordinate closely with the IMF and the World Bank, and, where necessary, with the European Parliament and the Council.",The Commission shall manage the Europass online platform.,,,,,A,annotator
+96,ResearchAndInnovationAction,A research and innovation action that must comply with legal obligations and ethical principles,,,,,,,A,annotator
+97,Cyprus,The Republic of Cyprus,,,,,,,A,annotator
+98,AnnualBudget,The annual budget of the European Union,,,,,,,A,annotator
+99,Individual,Represents an individual participating in the Europass system | Represents an individual possessing skills and qualifications,"LearningSkillsFramework, Article 21",Individuals conduct self-assessment of skills,,,,,A,annotator
+100,EuropeanNeighbourhoodCountries,Countries within the European Neighbourhood.,"In that respect, the",,,,,,A,annotator
+101,BroadcastingFrequencyUse,A use of the 700 MHz frequency band in accordance with EU regulations,,,,,,,A,annotator
+102,PrivateActors,Private entities involved in cultural heritage activities,,,,,,,A,annotator
+103,Netherlands,The Netherlands as a party involved in the EGF mobilization. | The Netherlands.,,,,,,,A,annotator
+104,ImplementationStructure,"A body governed by private law with a public service mission, tasked with implementing the Union budget.",,,,,,,A,annotator
+105,SpectrumUseDecision,A decision related to spectrum use,,,,,,,A,annotator
+106,MigrationPolicyHolder,Entity representing the holder of a migration policy,,,,,,,A,annotator
+107,Authority,Represents the competent authorities or bodies issuing Europass supplements. | Represents authorities or bodies issuing Europass supplements,"In particular, the order of each item in the templates shall be respected, to ensure ease of understanding and the provision of complete information.",,,,,,A,annotator
+108,financial_year,Represents a financial year as defined in the text.,,,,,,,A,annotator
+109,DTT_and_PMSE_users,Users of DTT and PMSE services,"The DTT and PMSE sectors therefore need long-term regulatory predictability with regard to the availability of sufficient spectrum, so that they can safeguard the sustainable provision and development of their services, in particular free-to-view television, while ensuring an appropriate environment",,,,,,A,annotator
+110,BroadcastingFrequencyBand,Represents the 700 MHz frequency band for wireless broadband electronic communications services.,,,,,,,A,annotator
+111,InternationalPartners,"Relevant international partners, such as the Venice Commission and the OSCE/ODIHR",,,,,,,A,annotator
+112,Sweden,The country to which the EGF mobilization applies | Sweden as the recipient of the EGF mobilization.,,,,,,,A,annotator
+113,NotificationProcedure,A procedure for notifying the Commission of intended negotiations or agreements,,,,,,,A,annotator
+114,CulturalHeritage,"Represents cultural heritage assets and resources. | Represents cultural heritage assets such as museums, libraries, archives, films, and monuments. | Represents parties involved in cultural heritage, including public and private bodies, individuals, and organizations.",The text mentions the Union and the Member States are party to the 2005 Unesco Convention on the Protection and Promotion of the Diversity of Cultural Expressions.,The text mentions sites that have been awarded the European Heritage Label have a strong European dimension.,,,,,A,annotator
+115,PRIMAISSteeringCommittee,Represents the monitoring and advisory body of PRIMA-IS.,,,,,,,A,annotator
+116,PRIMAIS_Contribution,A contribution made by a Participating State to PRIMA-IS | The contribution of PRIMA-IS to the implementation of PRIMA,,,,,,,A,annotator
+117,PRIMA_Decision,PRIMA Decision as a legal instrument | Decision subject to audit | A Decision related to the financial management of PRIMA,,,,,,,A,annotator
+118,CulturalHeritageSite,A cultural heritage site that has been awarded the European Heritage Label,The text mentions that sites that have been awarded the European Heritage Label have a strong European dimension,,,,,,A,annotator
+119,Italy,Italy. | Represents the country of Italy. | The party that submitted the final application for financial contribution.,Italy,,,,,,A,annotator
+120,Court_of_Auditors,The Court of Auditors,,,,,,,A,annotator

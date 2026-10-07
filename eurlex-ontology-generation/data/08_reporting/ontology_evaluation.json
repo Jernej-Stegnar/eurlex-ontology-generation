@@ -19,6 +19,7 @@
           "Party": 85
         },
         "known_entities": 39,
+        "known_entities_typed_by_gazetteer": 0,
         "pct_known_entities_correct_type": 79.5,
         "country_type_values": {
           "Party": 16,
@@ -73,349 +74,26 @@
       "gold": {
         "gold_entities": 26,
         "found_in_ontology": 26,
-        "type_accuracy": 46.2,
-        "is_a_accuracy": 0.0,
-        "kind_accuracy": 0.0,
-        "errors": [
-          {
-            "name": "European_Commission",
-            "expected": {
-              "type": "Party",
-              "is_a": "EUInstitution",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Party",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Council",
-            "expected": {
-              "type": "Party",
-              "is_a": "EUInstitution",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Party",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "European_Parliament",
-            "expected": {
-              "type": "Party",
-              "is_a": "EUInstitution",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Party",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Latvia",
-            "expected": {
-              "type": "Party",
-              "is_a": "Country",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Legal_extension",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Cyprus",
-            "expected": {
-              "type": "Party",
-              "is_a": "Country",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Legal_extension",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Greece",
-            "expected": {
-              "type": "Party",
-              "is_a": "Country",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Party",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "United_Kingdom",
-            "expected": {
-              "type": "Party",
-              "is_a": "Country",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Legal_extension",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "IMF",
-            "expected": {
-              "type": "Party",
-              "is_a": "InternationalOrganisation",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Legal_extension",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "EGF",
-            "expected": {
-              "type": "Asset",
-              "is_a": "Fund",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Party",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "European_Union_Solidarity_Fund",
-            "expected": {
-              "type": "Asset",
-              "is_a": "Fund",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Party",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Flexibility_Instrument",
-            "expected": {
-              "type": "Asset",
-              "is_a": "FinancialInstrument",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Asset",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "OLAF",
-            "expected": {
-              "type": "Party",
-              "is_a": "EUBody",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Party",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Member_State",
-            "expected": {
-              "type": "Party",
-              "is_a": "Country",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Party",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Decision",
-            "expected": {
-              "type": "Asset",
-              "is_a": "LegalAct",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Asset",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Regulation",
-            "expected": {
-              "type": "Asset",
-              "is_a": "LegalAct",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Asset",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Application",
-            "expected": {
-              "type": "Asset",
-              "is_a": "Document",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Legal_extension",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "FinancialContribution",
-            "expected": {
-              "type": "Asset",
-              "is_a": "FinancialInstrument",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Legal_extension",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "MacroFinancialAssistance",
-            "expected": {
-              "type": "Asset",
-              "is_a": "FinancialInstrument",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Asset",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Earthquake",
-            "expected": {
-              "type": "Legal_extension",
-              "is_a": "Event",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Legal_extension",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Notification",
-            "expected": {
-              "type": "Asset",
-              "is_a": "Document",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Legal_extension",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Spectrum",
-            "expected": {
-              "type": "Asset",
-              "is_a": "Resource",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Legal_extension",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "ThirdCountry",
-            "expected": {
-              "type": "Party",
-              "is_a": "Country",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Legal_extension",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Cyprus_Government",
-            "expected": {
-              "type": "Party",
-              "is_a": "PublicAuthority",
-              "kind": "individual"
-            },
-            "got": {
-              "type": "Party",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "EGF_Mobilization",
-            "expected": {
-              "type": "Legal_extension",
-              "is_a": "Procedure",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Asset",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "Stakeholder",
-            "expected": {
-              "type": "Party",
-              "is_a": "PartyRole",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Legal_extension",
-              "is_a": null,
-              "kind": null
-            }
-          },
-          {
-            "name": "IndependentExperts",
-            "expected": {
-              "type": "Party",
-              "is_a": "NaturalPerson",
-              "kind": "class"
-            },
-            "got": {
-              "type": "Legal_extension",
-              "is_a": null,
-              "kind": null
-            }
-          }
-        ]
+        "independent_labels": 0,
+        "held_out": {
+          "n": 0,
+          "type_accuracy": null,
+          "is_a_accuracy": null,
+          "kind_accuracy": null
+        },
+        "gazetteer_lookups": {
+          "n": 0,
+          "type_accuracy": null,
+          "is_a_accuracy": null,
+          "kind_accuracy": null
+        },
+        "seed_smoke_test": {
+          "n": 26,
+          "type_accuracy": 46.2,
+          "is_a_accuracy": 0.0,
+          "kind_accuracy": 0.0
+        },
+        "errors_held_out": []
       }
     },
     "eurlex_odrl_ontology_refined.json": {
@@ -437,14 +115,15 @@
           "Party": 89
         },
         "known_entities": 36,
-        "pct_known_entities_correct_type": 100.0,
+        "known_entities_typed_by_gazetteer": 36,
+        "pct_known_entities_correct_type": null,
         "country_type_values": {
           "Party": 19
         },
         "pct_entities_with_is_a": 100.0
       },
       "kind": {
-        "pct_known_individuals_as_individuals": 100.0,
+        "pct_known_individuals_as_individuals": null,
         "pct_entities_with_kind": 100.0
       },
       "leakage": {
@@ -479,16 +158,407 @@
       "gold": {
         "gold_entities": 26,
         "found_in_ontology": 26,
-        "type_accuracy": 100.0,
-        "is_a_accuracy": 100.0,
-        "kind_accuracy": 100.0,
-        "errors": []
-      },
-      "shacl": {
-        "violations": 0,
-        "warnings": 376,
-        "infos": 9
+        "independent_labels": 0,
+        "held_out": {
+          "n": 0,
+          "type_accuracy": null,
+          "is_a_accuracy": null,
+          "kind_accuracy": null
+        },
+        "gazetteer_lookups": {
+          "n": 0,
+          "type_accuracy": null,
+          "is_a_accuracy": null,
+          "kind_accuracy": null
+        },
+        "seed_smoke_test": {
+          "n": 26,
+          "type_accuracy": 100.0,
+          "is_a_accuracy": 100.0,
+          "kind_accuracy": 100.0
+        },
+        "errors_held_out": []
       }
     }
+  },
+  "typer_ablation": {
+    "canonical_names": {
+      "n": 95,
+      "type_accuracy": 18.9,
+      "is_a_accuracy": 17.9,
+      "kind_accuracy": 11.6
+    },
+    "all_surface_forms": {
+      "n": 193,
+      "type_accuracy": 35.2,
+      "is_a_accuracy": 30.6,
+      "kind_accuracy": 12.4
+    },
+    "by_gold_is_a": {
+      "Country": {
+        "n": 53,
+        "type_accuracy": 5.7,
+        "is_a_accuracy": 5.7,
+        "kind_accuracy": 0.0
+      },
+      "EUBody": {
+        "n": 10,
+        "type_accuracy": 50.0,
+        "is_a_accuracy": 50.0,
+        "kind_accuracy": 20.0
+      },
+      "EUInstitution": {
+        "n": 7,
+        "type_accuracy": 0.0,
+        "is_a_accuracy": 0.0,
+        "kind_accuracy": 0.0
+      },
+      "FinancialInstrument": {
+        "n": 1,
+        "type_accuracy": 100.0,
+        "is_a_accuracy": 100.0,
+        "kind_accuracy": 0.0
+      },
+      "Fund": {
+        "n": 11,
+        "type_accuracy": 63.6,
+        "is_a_accuracy": 63.6,
+        "kind_accuracy": 36.4
+      },
+      "InternationalOrganisation": {
+        "n": 8,
+        "type_accuracy": 12.5,
+        "is_a_accuracy": 12.5,
+        "kind_accuracy": 50.0
+      },
+      "Programme": {
+        "n": 5,
+        "type_accuracy": 20.0,
+        "is_a_accuracy": 0.0,
+        "kind_accuracy": 20.0
+      }
+    },
+    "errors": [
+      {
+        "name": "Austria",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Belgium",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Bulgaria",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Croatia",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Cyprus",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Czechia",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Denmark",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Estonia",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Finland",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "France",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Germany",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Greece",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Hungary",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Ireland",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Italy",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Latvia",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Lithuania",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Luxembourg",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Malta",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Netherlands",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Poland",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Portugal",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Romania",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Slovakia",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Slovenia",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Spain",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Sweden",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Norway",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Iceland",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Switzerland",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Ukraine",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Georgia",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Armenia",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Azerbaijan",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Belarus",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Turkey",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Serbia",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Albania",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "Montenegro",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      },
+      {
+        "name": "North_Macedonia",
+        "gold_type": "Party",
+        "gold_is_a": "Country",
+        "type": "Legal_extension",
+        "is_a": "Concept",
+        "kind": "class"
+      }
+    ]
   }
 }

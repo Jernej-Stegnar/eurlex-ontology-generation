@@ -6,7 +6,7 @@
     "rules": 453,
     "relationships": 86,
     "constraints": 358,
-    "triples": 7934
+    "triples": 7937
   },
   "export_skipped": [],
   "graph": {
@@ -20,8 +20,8 @@
     "actions": 60
   },
   "turtle_round_trip": {
-    "triples": 7934,
-    "triples_after_round_trip": 7934,
+    "triples": 7937,
+    "triples_after_round_trip": 7937,
     "ok": true
   },
   "shacl": {
@@ -37,14 +37,14 @@
         "message": "Constraint uses the fallback 'condition' operand (free-text condition).",
         "count": 228,
         "examples": [
-          "_:Nde94500",
-          "_:N418ba01",
-          "_:N269eb9d",
-          "_:N439e960",
-          "_:Nf3c16d2",
-          "_:N654e598",
-          "_:N41d3293",
-          "_:N8ba6151"
+          "_:N0373cff",
+          "_:N502d77c",
+          "_:N4e4c95e",
+          "_:Nce14ad3",
+          "_:Nff6bf48",
+          "_:N529f642",
+          "_:N1cdf980",
+          "_:Nb379614"
         ]
       },
       {
@@ -52,14 +52,14 @@
         "message": "Entity is not used by any rule or relationship.",
         "count": 59,
         "examples": [
-          "ElectronicCommunicationService",
+          "MigrationPolicyHolder",
+          "CulturalHeritageProtection",
+          "PRIMAIS Funding Administrative Burden",
+          "MacroFinancialAssistanceLoan",
+          "Independent Experts",
           "DTT and PMSE users",
-          "PRIMAIS Funding Action",
-          "NotificationRequirement",
-          "financial year",
-          "DTT and PMSE Sectors",
-          "AssessmentRequirement",
-          "QualificationsFrameworks"
+          "ElectoralSystemChanges",
+          "PublicAuthorities"
         ]
       },
       {
@@ -67,14 +67,14 @@
         "message": "odrl:target is a Party; the target is what the action applies to.",
         "count": 42,
         "examples": [
+          "permission_cfd6a6f7cad6",
           "permission_aab8285dbbfd",
-          "permission_2d7221e3e05a",
-          "permission_407a55f659e7",
-          "permission_eadbf82d7bf0",
-          "permission_5aa8db65e1b7",
+          "permission_2173f207c997",
+          "permission_f9cb278fb11b",
           "permission_b36c7cea9a60",
-          "permission_ab0c756e73f5",
-          "permission_0c99ba25c6ec"
+          "permission_38b917484e69",
+          "permission_84c1deeb2725",
+          "permission_5aa8db65e1b7"
         ]
       },
       {
@@ -82,14 +82,14 @@
         "message": "odrl:assignee is not typed Party.",
         "count": 24,
         "examples": [
-          "duty_f758b7f38b4f",
-          "permission_480e30e56e68",
-          "permission_8003f4f49408",
-          "duty_74202665b1c6",
-          "duty_9a8be0211a76",
-          "duty_4fc8a285414e",
+          "permission_35e32946fe16",
+          "permission_391dea3143f9",
+          "permission_3ee32c8ab76c",
+          "permission_2874fdeb6d34",
           "duty_585ebbf3dc96",
-          "permission_ef2140a619a5"
+          "permission_ef2140a619a5",
+          "duty_9a8be0211a76",
+          "duty_1ba715163e0b"
         ]
       },
       {
@@ -97,13 +97,13 @@
         "message": "Action is outside the controlled vocabulary (no odrl:includedIn parent).",
         "count": 12,
         "examples": [
-          "pool",
           "organize",
-          "draw",
-          "make",
           "on",
-          "take",
-          "work",
+          "document",
+          "make",
+          "participation",
+          "pool",
+          "self",
           "upgrade"
         ]
       },
@@ -112,14 +112,14 @@
         "message": "dateTime constraint whose right operand is not an xsd:date.",
         "count": 11,
         "examples": [
-          "_:N9224c32",
-          "_:N5d3884d",
-          "_:N01db418",
-          "_:N5b59dda",
-          "_:Ne210ec8",
-          "_:N7cacc44",
-          "_:N8fb4698",
-          "_:N622c8b7"
+          "_:N6b15801",
+          "_:Nca5fa98",
+          "_:Nebd2c13",
+          "_:N326a5f1",
+          "_:Naf1d8cf",
+          "_:Nbac772f",
+          "_:Nbc969fb",
+          "_:Ndb51602"
         ]
       },
       {
@@ -127,14 +127,14 @@
         "message": "Individual has no external identifier (owl:sameAs Wikidata or skos:exactMatch authority IRI).",
         "count": 9,
         "examples": [
-          "Cyprus Territory",
+          "Georgia Economic Stabilization Policy",
+          "PRIMAIS",
           "NationalBankOfMoldova",
           "PRIMA",
           "Moldova Reform Roadmap",
+          "Cyprus Territory",
           "Flexibility Instrument",
-          "PRIMAIS",
-          "Cyprus Government",
-          "EFSD Guarantee Fund"
+          "Cyprus Government"
         ]
       }
     ]

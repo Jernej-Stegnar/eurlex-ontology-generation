@@ -79,20 +79,27 @@ def compute_metrics(onto: dict) -> dict:
     docs = [d for d in docs if isinstance(d, (int, float))]
     m["long_tail"] = {"pct_entities_single_document": _pct(sum(1 for d in docs if d <= 1), len(docs))}
 
+    # Agreement with the gazetteer is only evidence when the gazetteer did not
+    # produce the label. Entities typed BY the gazetteer (type_source ==
+    # "gazetteer", i.e. the refined ontology) are excluded: counting them would
+    # score the lookup against itself. On raw generator output nothing is
+    # excluded, so the number measures the LLM.
     known = [(e, gaz.lookup(e["name"])) for e in ents]
     known = [(e, g) for e, g in known if g]
-    agree = sum(1 for e, g in known if e.get("type") == g.core_type)
+    independent = [(e, g) for e, g in known if e.get("type_source") != "gazetteer"]
+    agree = sum(1 for e, g in independent if e.get("type") == g.core_type)
     country_types = Counter(e.get("type") for e, g in known if g.is_a == "Country")
     m["typing"] = {
         "type_values": dict(Counter(e.get("type") for e in ents)),
         "known_entities": len(known),
-        "pct_known_entities_correct_type": _pct(agree, len(known)),
+        "known_entities_typed_by_gazetteer": len(known) - len(independent),
+        "pct_known_entities_correct_type": _pct(agree, len(independent)),
         "country_type_values": dict(country_types),
         "pct_entities_with_is_a": _pct(sum(1 for e in ents if e.get("is_a") in vocab.upper), len(ents)),
     }
     m["kind"] = {
         "pct_known_individuals_as_individuals": _pct(
-            sum(1 for e, _ in known if e["kind"] == "individual"), len(known)),
+            sum(1 for e, _ in independent if e["kind"] == "individual"), len(independent)),
         "pct_entities_with_kind": _pct(sum(1 for e in ents if e["kind"] in ("class", "individual")), len(ents)),
     }
     leaks = sorted(e["name"] for e in ents if vocab.metamodel_leakage(e["name"]))
@@ -177,11 +184,33 @@ def review_metrics(reviews_directory: str) -> dict:
     }
 
 
-def gold_metrics(onto: dict, gold_path: str) -> dict:
-    """Accuracy of type / is_a / kind for gold entities found in the ontology."""
-    gold = yaml.safe_load(Path(gold_path).read_text(encoding="utf-8")).get("entities", [])
-    index = {entity_key(e["name"]): e for e in _entities(onto)}
-    for e in _entities(onto):
+INDEPENDENT_SOURCES = ("expert", "annotator", "adjudicated")
+LABEL_FIELDS = ("type", "is_a", "kind")
+
+
+def load_gold(path: str) -> list[dict]:
+    """Gold entities from YAML (`entities:` list) or from a completed annotation sheet (CSV)."""
+    p = Path(path)
+    if p.suffix.lower() == ".csv":
+        df = pd.read_csv(p, encoding="utf-8").fillna("")
+        rows = []
+        for _, r in df.iterrows():
+            labels = {f: str(r.get(f, "")).strip() for f in LABEL_FIELDS}
+            if not any(labels.values()):
+                continue                                  # not annotated yet
+            rows.append({"name": r["name"], **{k: v for k, v in labels.items() if v},
+                         "source": str(r.get("source") or "annotator"),
+                         "annotator": str(r.get("annotator") or "")})
+        return rows
+    raw = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    default_source = raw.get("source", "seed")
+    return [{**e, "source": e.get("source", default_source)} for e in raw.get("entities", [])]
+
+
+def _match(onto: dict, gold: list[dict]) -> list[tuple[dict, dict]]:
+    ents = _entities(onto)
+    index = {entity_key(e["name"]): e for e in ents}
+    for e in ents:
         for v in e.get("merged_from", []) or []:
             index.setdefault(entity_key(v), e)
     found = []
@@ -190,26 +219,119 @@ def gold_metrics(onto: dict, gold_path: str) -> dict:
                     if entity_key(n) in index), None)
         if hit:
             found.append((g, hit))
-    def acc(field, gfield):
-        pairs = [(g[gfield], h.get(field)) for g, h in found if gfield in g]
-        return _pct(sum(1 for a, b in pairs if a == b), len(pairs))
+    return found
+
+
+def _accuracy(pairs: list[tuple[dict, dict]]) -> dict:
+    out = {"n": len(pairs)}
+    for f in LABEL_FIELDS:
+        scored = [(g[f], h.get(f)) for g, h in pairs if f in g]
+        out[f"{f}_accuracy"] = _pct(sum(1 for a, b in scored if a == b), len(scored))
+    return out
+
+
+def gold_metrics(onto: dict, gold_path: str) -> dict:
+    """Accuracy against gold labels, split so that nothing is scored against itself.
+
+    held_out           independent labels (expert / annotator / adjudicated) on
+                       entities whose prediction did NOT come from the gazetteer.
+                       This is the number to report.
+    gazetteer_lookups  independent labels on entities typed by the gazetteer:
+                       checks the gazetteer's content, not the typer.
+    seed_smoke_test    labels written together with the harness (source: seed).
+                       A regression test only, never evidence of quality.
+    """
+    gold = load_gold(gold_path)
+    found = _match(onto, gold)
+    independent = [(g, h) for g, h in found if g.get("source") in INDEPENDENT_SOURCES]
+    held_out = [(g, h) for g, h in independent if h.get("type_source") != "gazetteer"]
+    lookups = [(g, h) for g, h in independent if h.get("type_source") == "gazetteer"]
+    seed = [(g, h) for g, h in found if g.get("source") not in INDEPENDENT_SOURCES]
     return {
         "gold_entities": len(gold),
         "found_in_ontology": len(found),
-        "type_accuracy": acc("type", "type"),
-        "is_a_accuracy": acc("is_a", "is_a"),
-        "kind_accuracy": acc("kind", "kind"),
-        "errors": [{"name": g["name"], "expected": {k: g[k] for k in ("type", "is_a", "kind") if k in g},
-                    "got": {k: h.get(k) for k in ("type", "is_a", "kind")}}
-                   for g, h in found
-                   if any(k in g and g[k] != h.get(k) for k in ("type", "is_a", "kind"))],
+        "independent_labels": len(independent),
+        "held_out": _accuracy(held_out),
+        "gazetteer_lookups": _accuracy(lookups),
+        "seed_smoke_test": _accuracy(seed),
+        "errors_held_out": [
+            {"name": g["name"], "expected": {k: g[k] for k in LABEL_FIELDS if k in g},
+             "got": {k: h.get(k) for k in LABEL_FIELDS}}
+            for g, h in held_out if any(k in g and g[k] != h.get(k) for k in LABEL_FIELDS)],
     }
+
+
+def typer_ablation(vocabulary_path: str | None = None) -> dict:
+    """Non-circular test of the deterministic typer.
+
+    The gazetteer's labels (Latvia is a Country, the EGF is a Fund, ...) are
+    facts about the world, not outputs of the typer. Here every gazetteer name
+    and alias is typed with the gazetteer switched OFF, i.e. by the head-noun
+    keywords and name heuristics alone, the path used for every entity the
+    gazetteer does not know. Agreement with the gazetteer is therefore an
+    independent estimate of how well the fallback typer works.
+    """
+    from .entity_linking import Gazetteer, detect_kind
+    from .ontology_normalize import type_entity
+
+    vocab = load_vocabulary(vocabulary_path)
+    gaz = load_gazetteer(None, vocabulary_path)
+    empty = Gazetteer([], {})
+    rows = []
+    for canonical, entry in gaz.entries.items():
+        for name in dict.fromkeys([canonical, *gaz.surface_forms.get(canonical, [])]):
+            typed = type_entity(name, "", vocab, empty)
+            kind = detect_kind(name, "", empty, vocab)["kind"]
+            rows.append({"name": name, "gold_type": entry.core_type, "gold_is_a": entry.is_a,
+                         "type": typed["type"], "is_a": typed["is_a"], "kind": kind})
+    canon = [r for r in rows if r["name"] in gaz.entries]
+
+    def acc(rs):
+        return {"n": len(rs),
+                "type_accuracy": _pct(sum(r["type"] == r["gold_type"] for r in rs), len(rs)),
+                "is_a_accuracy": _pct(sum(r["is_a"] == r["gold_is_a"] for r in rs), len(rs)),
+                "kind_accuracy": _pct(sum(r["kind"] == "individual" for r in rs), len(rs))}
+
+    by_class: dict[str, list] = {}
+    for r in canon:
+        by_class.setdefault(r["gold_is_a"], []).append(r)
+    return {
+        "canonical_names": acc(canon),
+        "all_surface_forms": acc(rows),
+        "by_gold_is_a": {k: acc(v) for k, v in sorted(by_class.items())},
+        "errors": [r for r in canon if r["type"] != r["gold_type"]][:40],
+    }
+
+
+def cohen_kappa(a: list[str], b: list[str]) -> float | None:
+    """Agreement between two annotators beyond chance."""
+    if not a or len(a) != len(b):
+        return None
+    n = len(a)
+    po = sum(x == y for x, y in zip(a, b)) / n
+    labels = set(a) | set(b)
+    pe = sum((a.count(lbl) / n) * (b.count(lbl) / n) for lbl in labels)
+    return round((po - pe) / (1 - pe), 3) if pe < 1 else 1.0
+
+
+def annotator_agreement(sheet_a: str, sheet_b: str) -> dict:
+    """Cohen's kappa per label field on entities both annotators labelled."""
+    a = {g["name"]: g for g in load_gold(sheet_a)}
+    b = {g["name"]: g for g in load_gold(sheet_b)}
+    common = sorted(set(a) & set(b))
+    out = {"common_entities": len(common)}
+    for f in LABEL_FIELDS:
+        pairs = [(a[n].get(f, ""), b[n].get(f, "")) for n in common if a[n].get(f) and b[n].get(f)]
+        out[f"{f}_kappa"] = cohen_kappa([x for x, _ in pairs], [y for _, y in pairs])
+        out[f"{f}_raw_agreement"] = _pct(sum(x == y for x, y in pairs), len(pairs))
+    return out
 
 
 HEADLINE = [
     ("size", "classes"), ("size", "individuals"), ("size", "prohibitions"),
     ("long_tail", "pct_entities_single_document"),
-    ("typing", "pct_known_entities_correct_type"), ("typing", "pct_entities_with_is_a"),
+    ("typing", "pct_known_entities_correct_type"), ("typing", "known_entities_typed_by_gazetteer"),
+    ("typing", "pct_entities_with_is_a"),
     ("kind", "pct_known_individuals_as_individuals"),
     ("leakage", "count"),
     ("actions", "distinct"), ("actions", "pct_rules_controlled"), ("actions", "pct_distinct_used_once"),

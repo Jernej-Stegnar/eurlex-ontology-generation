@@ -293,11 +293,55 @@ def test_evaluation_before_after(tmp_path):
     after = compute_metrics(refined)
     assert before["leakage"]["count"] == 1 and after["leakage"]["count"] == 0
     assert after["actions"]["pct_rules_controlled"] == 100.0
-    assert after["kind"]["pct_known_individuals_as_individuals"] == 100.0
+    # raw generator output: agreement with the gazetteer is a real measurement
+    assert before["typing"]["pct_known_entities_correct_type"] is not None
+    # refined output: every known entity was typed BY the gazetteer, so the
+    # agreement would be circular and is not reported
+    assert after["typing"]["known_entities_typed_by_gazetteer"] == after["typing"]["known_entities"]
+    assert after["typing"]["pct_known_entities_correct_type"] is None
+
+
+def test_gold_metrics_never_scores_against_itself(tmp_path):
+    refined, _ = refine_ontology(json.loads(json.dumps(MERGED)))
     gold = tmp_path / "gold.yml"
-    gold.write_text("entities:\n  - {name: SolidarityFund, type: Asset, is_a: Fund, kind: individual}\n")
+    gold.write_text(
+        "entities:\n"
+        "  - {name: SolidarityFund, type: Asset, is_a: Fund, kind: individual, source: expert}\n"
+        "  - {name: Application, type: Asset, is_a: Document, kind: class, source: expert}\n"
+        "  - {name: European_Commission, type: Party, is_a: EUInstitution, kind: individual}\n")
     g = gold_metrics(refined, str(gold))
-    assert g["found_in_ontology"] == 1 and g["type_accuracy"] == 100.0
+    assert g["found_in_ontology"] == 3 and g["independent_labels"] == 2
+    assert g["gazetteer_lookups"]["n"] == 1          # SolidarityFund: typed by the gazetteer
+    assert g["held_out"]["n"] == 1                   # Application: typed by the typer
+    assert g["held_out"]["is_a_accuracy"] == 100.0
+    assert g["seed_smoke_test"]["n"] == 1            # no `source` -> seed, never headline
+
+
+def test_annotation_sheet_and_kappa(tmp_path):
+    from eurlex_ontology_generation.utils.evaluation import annotator_agreement, cohen_kappa, load_gold
+
+    a = tmp_path / "a.csv"
+    b = tmp_path / "b.csv"
+    pd.DataFrame([{"name": "X", "type": "Party", "is_a": "Country", "kind": "individual"},
+                  {"name": "Y", "type": "Asset", "is_a": "Fund", "kind": "class"},
+                  {"name": "Z", "type": "", "is_a": "", "kind": ""}]).to_csv(a, index=False)
+    pd.DataFrame([{"name": "X", "type": "Party", "is_a": "Country", "kind": "individual"},
+                  {"name": "Y", "type": "Party", "is_a": "Fund", "kind": "class"}]).to_csv(b, index=False)
+    rows = load_gold(str(a))
+    assert [r["name"] for r in rows] == ["X", "Y"] and rows[0]["source"] == "annotator"
+    ag = annotator_agreement(str(a), str(b))
+    assert ag["common_entities"] == 2 and ag["is_a_kappa"] == 1.0 and ag["type_raw_agreement"] == 50.0
+    assert cohen_kappa(["a", "b", "a", "b"], ["a", "b", "b", "a"]) == 0.0
+
+
+def test_typer_ablation_is_independent_of_gazetteer():
+    from eurlex_ontology_generation.utils.evaluation import typer_ablation
+
+    r = typer_ablation()
+    assert r["canonical_names"]["n"] == len(load_gazetteer().entries)
+    # the ablation must not be able to see the gazetteer: a perfect score would
+    # mean the lookup leaked into the "held-out" path
+    assert r["canonical_names"]["type_accuracy"] < 100.0
 
 
 # ------------------------------------------------------------ persistence
