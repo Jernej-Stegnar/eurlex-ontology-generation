@@ -22,9 +22,10 @@ ontology_generation:
   vocabulary_path: null   # null = packaged resources/vocabulary.yml
 
   # Execution backend and parallelism settings for LLM inference
-  llm_backend:
-    provider: ollama  # Local backend provider
-    max_workers: 5    # Number of concurrent threads for parallel execution
+  # Backend profile from conf/base/globals.yml: local | ollama_remote |
+  # openrouter | openai | vllm | lmstudio | anthropic. `model` above must be a
+  # model name that backend serves. Each step can use a different backend.
+  llm_backend: ${globals:llm_backends.local}
 
   # Prompt instructions that define the LLM's role, task, and output constraints (remains the same for all chunks)
   # Placeholders in {braces} are filled from the controlled vocabulary at run time:

@@ -19,6 +19,8 @@ ontology_merge_partition:
   # Embedding model pulled via Ollama (e.g. `ollama pull all-minilm`).
   # all-minilm is small/fast
   embedding_model: all-minilm
+  # Backend profile from conf/base/globals.yml (ollama or openai_compatible).
+  embedding_backend: ${globals:llm_backends.local}
  
   # Cosine similarity threshold for merging two entity mentions into the
   # same canonical entity. Start here and tune after inspecting a

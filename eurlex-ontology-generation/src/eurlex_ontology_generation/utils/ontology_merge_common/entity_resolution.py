@@ -317,19 +317,15 @@ def extract_entities(ontologies: pd.DataFrame) -> pd.DataFrame:
 
 
 # Embeddings + clustering
-def compute_embeddings(texts: list[str], embedding_model: str, batch_size: int = 64) -> np.ndarray:
+def compute_embeddings(texts: list[str], embedding_model: str, batch_size: int = 64,
+                       backend: dict | None = None) -> np.ndarray:
     if not texts:
         return np.zeros((0, 1), dtype=np.float32)
-    
-    from ollama import embed
 
-    vectors: list[list[float]] = []
-    
-    for start in range(0, len(texts), batch_size):
-        response = embed(model=embedding_model, input=texts[start:start + batch_size])
-        vectors.extend(response["embeddings"])
-    
-    return np.array(vectors, dtype=np.float32)
+    # Ollama by default; any OpenAI-compatible /embeddings endpoint via `backend`
+    from ..llm_client import embed_texts
+
+    return np.array(embed_texts(backend, embedding_model, texts, batch_size), dtype=np.float32)
 
 
 class _UnionFind:
@@ -366,13 +362,14 @@ def _mergeable(a: list[str], b: list[str], sim: float) -> bool:
 
 # keys: unique exact-merge keys of the classes; reps: key -> most frequent surface name
 # Returns a union-find over the indices of `keys`
-def _cluster_class_keys(keys: list[str], reps: dict[str, str], model: str, threshold: float) -> _UnionFind:
+def _cluster_class_keys(keys: list[str], reps: dict[str, str], model: str, threshold: float,
+                        backend: dict | None = None) -> _UnionFind:
     uf = _UnionFind(len(keys))
     
     if not CLASS_EMBEDDINGS or len(keys) < 2:
         return uf
     try:
-        vecs = compute_embeddings([" ".join(_split_identifier(reps[k])) for k in keys], model)
+        vecs = compute_embeddings([" ".join(_split_identifier(reps[k])) for k in keys], model, backend=backend)
     except Exception as exc:  # ollama not running etc.
         logger.warning("Embeddings unavailable (%s): class merge limited to exact keys.", exc)
         return uf
@@ -394,7 +391,8 @@ def _cluster_class_keys(keys: list[str], reps: dict[str, str], model: str, thres
 
 
 # Adds `key` and `cluster_id` columns; cluster ids are unique across entity types
-def cluster_entities(entities: pd.DataFrame, embedding_model: str, similarity_threshold: float) -> pd.DataFrame:
+def cluster_entities(entities: pd.DataFrame, embedding_model: str, similarity_threshold: float,
+                     embedding_backend: dict | None = None) -> pd.DataFrame:
     entities = entities.copy()
     
     if entities.empty:
@@ -411,7 +409,7 @@ def cluster_entities(entities: pd.DataFrame, embedding_model: str, similarity_th
         
         if etype == "class":
             reps = group.groupby("key")["name"].agg(lambda s: Counter(s).most_common(1)[0][0]).to_dict()
-            uf = _cluster_class_keys(keys, reps, embedding_model, similarity_threshold)
+            uf = _cluster_class_keys(keys, reps, embedding_model, similarity_threshold, embedding_backend)
             root_of = {k: uf.find(i) for i, k in enumerate(keys)}
         else:                                           # actions: exact normalised key only
             root_of = {k: i for i, k in enumerate(keys)}

@@ -67,6 +67,21 @@ def _constraint_key(c: dict) -> tuple:
     return (c.get("name"), c.get("value"))
 
 
+# Provenance: CELEX numbers of the acts a class or rule comes from.
+# Chunk-level rows contribute their own CELEX; partition-level objects carry
+# `sources` from the lower merge. Lists longer than MAX_SOURCES keep the first
+# MAX_SOURCES (sorted) plus the true count in support.documents.
+_CELEX_RE = re.compile(r"^[0-9CE]\d{4}[A-Z]{1,2}\d+")
+MAX_SOURCES = 2000
+
+
+def _sources(obj: dict, celex: str) -> set[str]:
+    carried = obj.get("sources")
+    if isinstance(carried, list) and carried:
+        return {str(c) for c in carried}
+    return {celex} if _CELEX_RE.match(celex or "") else set()
+
+
 # Extract (chunk_count, document_count) support metrics from an entity dictionary
 def _support(obj: dict) -> tuple[int, int]:
     s = obj.get("support")
@@ -106,6 +121,7 @@ def assemble_merged_ontology(
     class_chunks: Counter = Counter()
     class_docs: dict[str, set] = defaultdict(set)
     class_docs_n: Counter = Counter()          # documents carried over from lower-level support
+    class_sources: dict[str, set] = defaultdict(set)
     raw_class_names: set[str] = set()
     relationships: dict[tuple, dict] = {}
     rules: dict[str, dict[tuple, dict]] = {k: {} for k in RULE_KINDS}
@@ -163,6 +179,7 @@ def assemble_merged_ontology(
             class_chunks[name] += chunks
             class_docs[name].add(celex)
             class_docs_n[name] += max(docs - 1, 0)
+            class_sources[name] |= _sources(cls, celex)
             if cls.get("type"):
                 type_votes[name][cls["type"]] += chunks
             if cls.get("is_a"):
@@ -245,6 +262,7 @@ def assemble_merged_ontology(
                                   "constraints": [], "support": 0, "approved_support": 0})
                         rule_chunks = _support(rule)[0]
                         entry["support"] += rule_chunks
+                        entry.setdefault("sources", set()).update(_sources(rule, celex))
                         entry["approved_support"] += _approved_support(rule, row_approved, rule_chunks)
                         if rule.get("provision") and not entry.get("provision"):
                             entry["provision"] = rule["provision"]
@@ -302,10 +320,15 @@ def assemble_merged_ontology(
         
         if declared not in (VALID_CORE_TYPES | {"Legal_extension"}):
             declared = "Legal_extension"
+        documents = len(class_docs[name]) + class_docs_n[name]
+        if class_sources[name]:
+            # exact count of distinct acts when provenance is complete
+            documents = max(len(class_sources[name]), 1)
         entry = {
             "name": name, "type": declared, "description": cls["description"],
+            "sources": sorted(class_sources[name])[:MAX_SOURCES],
             "support": {"chunks": class_chunks[name],
-                        "documents": len(class_docs[name]) + class_docs_n[name],
+                        "documents": documents,
                         "approved_chunks": class_approved[name]},
         }
         if is_a_votes.get(name):
@@ -393,6 +416,8 @@ def assemble_merged_ontology(
 def _public(rule: dict, kind: str) -> dict:
     out = {"action": rule["action"], "party": rule["party"], "constraints": rule["constraints"],
            "support": {"chunks": rule["support"], "approved_chunks": rule.get("approved_support", 0)}}
+    if rule.get("sources"):
+        out["sources"] = sorted(rule["sources"])[:MAX_SOURCES]
     if rule.get("action_object"):
         out["action_object"] = rule["action_object"]
     if rule.get("action_label"):

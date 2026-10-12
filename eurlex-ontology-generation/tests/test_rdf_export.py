@@ -162,3 +162,49 @@ def test_iris_use_the_w3id_namespace(graph):
     onto = URIRef("https://w3id.org/eurlex-odrl/ontology")
     assert (onto, RDF.type, OWL.Ontology) in g
     assert not any("example.org" in str(t) for triple in g for t in triple)
+
+
+def test_one_policy_per_act_and_candidate_status():
+    from eurlex_ontology_generation.utils.rdf_export import parse_celex
+
+    merged = json.loads(json.dumps(MERGED))
+    merged["rights_model"]["permissions"][0]["sources"] = ["32018D1859", "32017D0339"]
+    merged["rights_model"]["duties"][0]["sources"] = ["32018D1859"]
+    for c in merged["classes"]:
+        c["sources"] = ["32018D1859"]
+    refined, report = refine_ontology(merged, min_documents_for_class=2)
+    app = next(c for c in refined["classes"] if c["name"] == "Application")
+    assert app["status"] == "candidate" and app["support"]["documents"] == 1
+    g, stats = export_rdf(refined)
+    pol = NS["pol"]
+    act = pol["act/32018D1859"]
+    assert (act, RDF.type, ODRL.Set) in g and (act, EO.celex, Literal("32018D1859")) in g
+    assert (act, EO.actType, Literal("Decision")) in g
+    perm = next(g.subjects(RDF.type, ODRL.Permission))
+    assert set(g.subjects(ODRL.permission, perm)) == {act, pol["act/32017D0339"]}
+    assert (ENT["Application"], EO.status, Literal("candidate")) in g
+    assert stats["policies"] == 2
+    assert parse_celex("32019R0001")["act_type"] == "Regulation"
+    assert parse_celex("62014CJ0362")["sector_label"] == "Case-law"
+    ok, _, summary = validate_graph(g)
+    assert ok
+    assert "Candidate class" in " ".join(r["message"] for r in summary["results"])
+
+
+def test_curation_decisions_override_heuristics():
+    merged = json.loads(json.dumps(MERGED))
+    perm_rule = merged["rights_model"]["permissions"][0]
+    refined0, _ = refine_ontology(json.loads(json.dumps(merged)))
+    rid = refined0["rights_model"]["duties"][0]["id"]
+    decisions = [
+        {"type": "set_typing", "entity": "Application", "is_a": "Procedure", "status": "accepted"},
+        {"type": "promote_class", "entity": "Application", "status": "accepted"},
+        {"type": "remove_rule", "rule_id": rid, "status": "accepted"},
+    ]
+    refined, report = refine_ontology(merged, curation=decisions, min_documents_for_class=5)
+    app = next(c for c in refined["classes"] if c["name"] == "Application")
+    assert (app["type"], app["is_a"], app["type_source"], app["status"]) == \
+        ("Legal_extension", "Procedure", "curated", "accepted")
+    assert refined["rights_model"]["duties"] == []
+    assert report["curation_applied"] == 3
+    assert perm_rule  # untouched fixture

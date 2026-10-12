@@ -61,9 +61,10 @@ def merge_partition(
     part_id: int,
     embedding_model: str,
     similarity_threshold: float,
+    embedding_backend: dict | None = None,
 ) -> tuple[dict, dict, pd.DataFrame]:
     entities = extract_entities(revisions)
-    entities_with_clusters = cluster_entities(entities, embedding_model, similarity_threshold)
+    entities_with_clusters = cluster_entities(entities, embedding_model, similarity_threshold, embedding_backend)
     canonical_map, cluster_report = canonicalize_clusters(entities_with_clusters)
 
     merged, provenance = assemble_merged_ontology(

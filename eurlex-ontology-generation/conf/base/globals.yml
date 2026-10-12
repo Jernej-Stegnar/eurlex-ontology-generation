@@ -1,0 +1,55 @@
+# Shared settings referenced from the parameter files with ${globals:...}.
+#
+# LLM backend profiles. Pick one per pipeline step in its parameters file:
+#   llm_backend: ${globals:llm_backends.openrouter}
+# and set that step's `model` to a model the backend serves.
+# API keys are read from the environment variable named in `api_key_env`
+# (export it in your shell, or put it in a .env you source); never write keys
+# in these files. To override locally without committing, copy a parameters
+# file to conf/local/ and change `llm_backend` there.
+
+llm_backends:
+  # Ollama on this machine (default, previous behaviour)
+  local:
+    provider: ollama
+    max_workers: 5
+
+  # Ollama on another host, e.g. a GPU server
+  ollama_remote:
+    provider: ollama
+    base_url: http://gpu-server:11434
+    max_workers: 8
+
+  # Any OpenAI-compatible API (chat + embeddings)
+  openrouter:
+    provider: openai_compatible
+    base_url: https://openrouter.ai/api/v1
+    api_key_env: OPENROUTER_API_KEY
+    structured_output: json_schema     # falls back to json_object / plain if rejected
+    max_workers: 8
+    timeout_s: 180
+    max_retries: 4
+
+  openai:
+    provider: openai_compatible
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    max_workers: 8
+
+  # Self-hosted inference servers
+  vllm:
+    provider: openai_compatible
+    base_url: http://localhost:8000/v1
+    max_workers: 16
+
+  lmstudio:
+    provider: openai_compatible
+    base_url: http://localhost:1234/v1
+    max_workers: 2
+
+  # Anthropic Messages API (structured output via a forced tool call; no embeddings)
+  anthropic:
+    provider: anthropic
+    api_key_env: ANTHROPIC_API_KEY
+    max_workers: 4
+    max_retries: 4

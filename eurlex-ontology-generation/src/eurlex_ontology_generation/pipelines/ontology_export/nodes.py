@@ -13,10 +13,22 @@ from ...utils.rdf_validate import (
 )
 
 
+def load_act_metadata(path: str | None) -> dict:
+    """CELEX -> {title, date} from the project's cleaned corpus (eurlex_ingestion
+    output: CELEX, Act_name, Date_document). Optional: missing file -> {}."""
+    if not path or not Path(path).exists():
+        return {}
+    import pandas as pd
+
+    df = pd.read_csv(path, usecols=lambda c: c in ("CELEX", "Act_name", "Date_document"), encoding="utf-8")
+    return {str(r["CELEX"]): {"title": r.get("Act_name"), "date": r.get("Date_document")}
+            for _, r in df.dropna(subset=["CELEX"]).iterrows()}
+
+
 def export_and_validate(refined: dict, base_iri: str, shapes_path: str | None,
                         vocabulary_path: str | None, fail_on_violation: bool,
-                        run_reasoner: bool = True):
-    graph, stats = export_rdf(refined, base_iri, vocabulary_path)
+                        run_reasoner: bool = True, act_metadata_path: str | None = None):
+    graph, stats = export_rdf(refined, base_iri, vocabulary_path, load_act_metadata(act_metadata_path))
     conforms, report, summary = validate_graph(graph, shapes_path, base_iri)
     reasoner = reasoner_check(graph) if run_reasoner else {"available": False, "reason": "disabled"}
     summary = {

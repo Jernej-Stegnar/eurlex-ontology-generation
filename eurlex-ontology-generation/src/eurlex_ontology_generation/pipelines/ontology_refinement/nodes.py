@@ -19,6 +19,7 @@ Steps (no LLM involved; Wikidata is optional and off by default):
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -56,8 +57,41 @@ def load_merged_ontology(input_path: str) -> dict:
     return json.loads(Path(input_path).read_text(encoding="utf-8"))
 
 
+def rule_id(kind: str, rule: dict) -> str:
+    """Stable id of a rule: same action, object, party and asset -> same id."""
+    key = "|".join(str(rule.get(k) or "") for k in ("action", "action_object", "party", "asset"))
+    prefix = {"permissions": "permission", "prohibitions": "prohibition", "duties": "duty"}[kind]
+    return f"{prefix}_{hashlib.sha1(f'{kind}|{key}'.encode()).hexdigest()[:12]}"
+
+
+def _item_id(kind: str, subject: str) -> str:
+    return f"{kind}:{hashlib.sha1(subject.encode()).hexdigest()[:10]}"
+
+
+def load_curation(path: str | None) -> list[dict]:
+    """Accepted curation decisions (JSONL written by the MCP server / scripts/curation.py).
+    Only `status: accepted` lines are applied; pending and rejected ones are ignored."""
+    if not path or not Path(path).exists():
+        return []
+    out = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            d = json.loads(line)
+            if d.get("status") == "accepted":
+                out.append(d)
+    return out
+
+
 def refine_ontology(merged: dict, wikidata: dict | None = None,
-                    vocabulary_path: str | None = None) -> tuple[dict, dict]:
+                    vocabulary_path: str | None = None,
+                    curation: list[dict] | None = None,
+                    min_documents_for_class: int = 3) -> tuple[dict, dict]:
+    """See module docstring. `curation` holds accepted decisions (set_typing,
+    merge_entities, remove_rule, promote_class, demote_class); they are applied
+    last, so a person's decision always wins over heuristics.
+    Classes supported by fewer than `min_documents_for_class` acts get
+    status `candidate` (kept, flagged) unless promoted by a decision."""
+    curation = curation or []
     vocab = load_vocabulary(vocabulary_path)
     gazetteer = load_gazetteer(None, vocabulary_path)
     wikidata = wikidata or {}
@@ -95,6 +129,14 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
             changes["renamed_to_gazetteer"] += 1
             log["renamed_to_gazetteer"].append(f"{name} -> {hit.name}")
 
+    # curated merges: every listed name is renamed to the target
+    for d in curation:
+        if d.get("type") == "merge_entities":
+            for n in d.get("entities", []):
+                if n != d["into"]:
+                    rename[n] = d["into"]
+                    changes["curated_merge"] += 1
+
     def resolve(name: Any) -> str | None:
         if not isinstance(name, str) or not name.strip():
             return None
@@ -119,8 +161,9 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
             continue
         e = entities.setdefault(target, {"name": target, "descriptions": [], "support": {},
                                          "type_votes": Counter(), "is_a_votes": Counter(),
-                                         "kind_votes": Counter(), "variants": []})
+                                         "kind_votes": Counter(), "variants": [], "sources": set()})
         e["variants"].append(cls["name"])
+        e["sources"].update(cls.get("sources") or [])
         sup = _support(cls)
         e["support"] = _add_support(e["support"], sup)
         weight = sup.get("chunks", 1)
@@ -137,7 +180,8 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
     for parts in composites.values():
         for p in parts:
             entities.setdefault(p, {"name": p, "descriptions": [], "support": {}, "type_votes": Counter(),
-                                    "is_a_votes": Counter(), "kind_votes": Counter(), "variants": []})
+                                    "is_a_votes": Counter(), "kind_votes": Counter(), "variants": [],
+                                    "sources": set()})
 
     review_queue = []
     typed: dict[str, dict] = {}
@@ -161,9 +205,29 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
         if declared_kind != t["kind"]:
             changes[f"kind_set_{t['kind']}"] += 1
         if t["kind_confidence"] == "low" and t["kind"] == "individual":
-            review_queue.append({"name": name, "question": "individual or class?",
-                                 "current": t["kind"], "evidence": t.get("type_source")})
+            review_queue.append({"id": _item_id("entity_kind", name), "kind": "entity_kind",
+                                 "subject": name, "question": "individual or class?",
+                                 "current": {"kind": t["kind"], "is_a": t["is_a"]},
+                                 "evidence": t.get("type_source")})
+        if len(e["type_votes"]) > 1 and t.get("type_source") != "gazetteer":
+            review_queue.append({"id": _item_id("type_conflict", name), "kind": "type_conflict",
+                                 "subject": name, "question": "which core type and upper class?",
+                                 "current": {"type": t["type"], "is_a": t["is_a"]},
+                                 "evidence": f"generator votes {dict(e['type_votes'])}; {t.get('type_source')}"})
         typed[name] = t
+
+    # curated typing overrides (a person's decision wins over every heuristic)
+    for d in curation:
+        if d.get("type") == "set_typing" and d.get("entity") in typed:
+            t = typed[d["entity"]]
+            if d.get("is_a") in vocab.upper:
+                t["is_a"], t["type"] = d["is_a"], vocab.core_type_of(d["is_a"])
+            elif d.get("type_value") in vocab.core_types:
+                t["type"] = d["type_value"]
+            if d.get("kind") in ("class", "individual"):
+                t["kind"] = d["kind"]
+            t["type_source"], t["kind_confidence"] = "curated", "high"
+            changes["curated_typing"] += 1
 
     # ---------------------------------------------------- 6: rules
     rules: dict[str, dict[tuple, dict]] = {k: {} for k in RULE_KINDS}
@@ -198,6 +262,7 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
                 if entry["support"]:
                     changes["rule_merged"] += 1
                 entry["support"] = _add_support(entry["support"], _support(rule))
+                entry.setdefault("sources", set()).update(rule.get("sources") or [])
                 if rule.get("provision"):
                     entry.setdefault("provision", rule["provision"])
                 seen = {(c["left_operand"], c["operator"], c["right_operand"]) for c in entry["constraints"]}
@@ -251,6 +316,8 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
             examples.append({**ex, "entity": target})
 
     # ---------------------------------------------------- 5: TBox / ABox
+    promoted = {d["entity"] for d in curation if d.get("type") == "promote_class"}
+    demoted = {d["entity"] for d in curation if d.get("type") == "demote_class"}
     classes, individuals = [], []
     for name, e in entities.items():
         t = typed[name]
@@ -258,6 +325,9 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
                   "description": " | ".join(e["descriptions"]),
                   "support": e["support"], "type_source": t.get("type_source"),
                   "kind_confidence": t.get("kind_confidence")}
+        if e["sources"]:
+            record["sources"] = sorted(e["sources"])
+            record["support"] = {**record["support"], "documents": len(e["sources"])}
         for k in ("iri", "member_state", "related_individual", "wikidata"):
             if t.get(k) is not None:
                 record[k] = t[k]
@@ -267,9 +337,52 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
             record["instance_of"] = record.pop("is_a")
             individuals.append(record)
         else:
+            docs = int(record["support"].get("documents", 0))
+            if name in demoted:
+                record["status"] = "candidate"
+            elif name in promoted or docs >= min_documents_for_class:
+                record["status"] = "accepted"
+            else:
+                record["status"] = "candidate"
+                if docs == min_documents_for_class - 1:
+                    review_queue.append({
+                        "id": _item_id("class_promotion", name), "kind": "class_promotion",
+                        "subject": name, "question": f"promote to an accepted class? ({docs} acts, "
+                                                     f"threshold {min_documents_for_class})",
+                        "current": {"status": "candidate", "is_a": record["is_a"]},
+                        "evidence": record.get("description", "")[:300]})
+            changes[f"class_{record['status']}"] += 1
             classes.append(record)
 
-    rights_model = {k: [{**r, "support": r["support"]} for r in rules[k].values()] for k in RULE_KINDS}
+    removed_rules = {d["rule_id"] for d in curation if d.get("type") == "remove_rule"}
+    rights_model = {}
+    for k in RULE_KINDS:
+        out = []
+        for r in rules[k].values():
+            rid = rule_id(k, r)
+            if rid in removed_rules:
+                changes["curated_rule_removed"] += 1
+                continue
+            out.append({**r, "id": rid, "sources": sorted(r.get("sources") or [])})
+        rights_model[k] = out
+
+    # rule-slot problems become review items with their rule id
+    kinds = {c["name"]: c["type"] for c in classes + individuals}
+    for k, rs in rights_model.items():
+        for r in rs:
+            if kinds.get(r["party"]) not in (None, "Party"):
+                review_queue.append({
+                    "id": _item_id("rule_slot", r["id"] + "party"), "kind": "rule_slot", "subject": r["id"],
+                    "question": f"party '{r['party']}' is typed {kinds.get(r['party'])}: fix the typing, "
+                                "or remove the rule?",
+                    "current": {k2: r.get(k2) for k2 in ("action", "action_label", "party", "asset")},
+                    "evidence": ", ".join(r["sources"][:5])})
+            if r.get("asset") and kinds.get(r["asset"]) == "Party":
+                review_queue.append({
+                    "id": _item_id("rule_slot", r["id"] + "asset"), "kind": "rule_slot", "subject": r["id"],
+                    "question": f"asset '{r['asset']}' is a Party: fix the typing, or remove the rule?",
+                    "current": {k2: r.get(k2) for k2 in ("action", "action_label", "party", "asset")},
+                    "evidence": ", ".join(r["sources"][:5])})
 
     refined = {
         "ontology_name": merged.get("ontology_name", "EurLex ODRL Ontology") + " (refined)",
@@ -296,7 +409,11 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
         "change_log": {k: v for k, v in log.items()},
         "consistency_issues": consistency,
         "review_queue": review_queue,
+        "curation_applied": len(curation),
+        "min_documents_for_class": min_documents_for_class,
         "counts": {"classes": len(classes), "individuals": len(individuals),
+                   "accepted_classes": sum(1 for c in classes if c.get("status") == "accepted"),
+                   "candidate_classes": sum(1 for c in classes if c.get("status") == "candidate"),
                    "relationships": len(relationships),
                    **{k: len(v) for k, v in rights_model.items()}},
     }

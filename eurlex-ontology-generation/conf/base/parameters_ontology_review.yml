@@ -14,9 +14,10 @@ ontology_review:
   max_retries: 2     # attempts after the first one (different seed each time)
 
   # Execution backend and parallelism settings for LLM inference
-  llm_backend:
-    provider: ollama  # Local backend provider
-    max_workers: 5    # Number of concurrent threads for parallel execution
+  # Backend profile from conf/base/globals.yml: local | ollama_remote |
+  # openrouter | openai | vllm | lmstudio | anthropic. `model` above must be a
+  # model name that backend serves. Each step can use a different backend.
+  llm_backend: ${globals:llm_backends.local}
 
   # Number of batches processed by the review pipeline is controlled by the external batch orchestrator
   batch_id: 0

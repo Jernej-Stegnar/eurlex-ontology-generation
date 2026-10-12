@@ -35,6 +35,10 @@ eurlex-ontology-generation = "eurlex_ontology_generation.__main__:main"
 reasoner = [
     "owlready2>=0.46",
 ]
+# MCP server for agent-assisted curation (agent/mcp_server.py)
+agent = [
+    "mcp>=1.2",
+]
 dev = [
     "pytest-cov>=3,<7",
     "pytest-mock>=1.7.1, <2.0",
@@ -46,7 +50,7 @@ dev = [
 attr = "eurlex_ontology_generation.__version__"
 
 [tool.setuptools.package-data]
-eurlex_ontology_generation = ["resources/*.yml"]
+eurlex_ontology_generation = ["resources/*.yml", "resources/*.ttl"]
 
 [tool.setuptools.packages.find]
 where = [

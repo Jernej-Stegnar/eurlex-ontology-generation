@@ -1,8 +1,16 @@
+import json
+import logging
+import os
+import time
+import urllib.error
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from typing import Any
 
-from ollama import chat
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 # Stores the execution result and metadata from an LLM call
@@ -15,14 +23,31 @@ class LLMResult:
 
 
 """
-Executes a chat completion request using a local Ollama model.
+Executes a chat completion request against the configured backend.
+
+`backend` (the `llm_backend` parameter of each pipeline) selects the provider:
+
+  provider: ollama              local Ollama (default; previous behaviour)
+            base_url            optional Ollama host, e.g. http://gpu-box:11434
+  provider: openai_compatible   any /v1/chat/completions server: OpenRouter,
+                                vLLM, LM Studio, Together, Groq, OpenAI, or
+                                Ollama's own /v1 endpoint
+            base_url            e.g. https://openrouter.ai/api/v1
+            api_key_env         name of the environment variable with the key
+            structured_output   json_schema (default) | json_object | none
+  provider: anthropic           Anthropic Messages API (structured output via a
+                                forced tool call)
+            api_key_env         e.g. ANTHROPIC_API_KEY
+
+Common optional keys: timeout_s (120), max_retries (3), max_workers.
+Keys are read from the environment only, never from the parameter files.
 
 Returns:
     LLMResult: Object containing generated text content and call metadata.
 """
 def llm_chat(
-    backend: dict,      # Backend configuration mapping (reserved for multi-backend extensions)
-    local_model: str,   # Name/tag of the local Ollama model to invoke
+    backend: dict,      # Backend configuration mapping (see above)
+    local_model: str,   # Model name/tag for the selected backend
     system_prompt: str,
     user_prompt: str,
     temperature: float,
@@ -30,9 +55,33 @@ def llm_chat(
     schema_model: type[BaseModel] | None = None,
     json_mode: bool = False,
     seed: int | None = None,
-    num_ctx: int | None = None,     # Context window size for the generation session
+    num_ctx: int | None = None,     # Context window size (Ollama only)
     max_tokens: int | None = None,
 ) -> LLMResult:
+
+    backend = backend or {}
+    provider = backend.get("provider", "ollama")
+    schema = inline_refs(schema_model.model_json_schema()) if schema_model is not None else None
+
+    if provider == "ollama":
+        call = lambda: _ollama_chat(backend, local_model, system_prompt, user_prompt,  # noqa: E731
+                                    temperature, schema, json_mode, seed, num_ctx, max_tokens)
+    elif provider == "openai_compatible":
+        call = lambda: _openai_chat(backend, local_model, system_prompt, user_prompt,  # noqa: E731
+                                    temperature, schema, json_mode, seed, max_tokens)
+    elif provider == "anthropic":
+        call = lambda: _anthropic_chat(backend, local_model, system_prompt, user_prompt,  # noqa: E731
+                                       temperature, schema, json_mode, max_tokens)
+    else:
+        raise ValueError(f"Unknown llm_backend.provider: {provider!r}")
+
+    return _with_retries(call, int(backend.get("max_retries", 3)))
+
+
+# ------------------------------------------------------------------ Ollama
+def _ollama_chat(backend, model, system_prompt, user_prompt, temperature, schema,
+                 json_mode, seed, num_ctx, max_tokens) -> LLMResult:
+    from ollama import Client, chat
 
     # Configure generation options for Ollama
     options = {"temperature": temperature}
@@ -44,21 +93,16 @@ def llm_chat(
         options["num_predict"] = max_tokens
 
     # Determine response format schema
-    if schema_model is not None:
-        fmt = schema_model.model_json_schema()
-    else:
-        fmt = "json" if json_mode else None
+    fmt = schema if schema is not None else ("json" if json_mode else None)
 
-    # Invoke local Ollama chat backend
-    r = chat(
-        model=local_model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        options=options,
-        format=fmt,
-    )
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    if backend.get("base_url"):
+        r = Client(host=backend["base_url"]).chat(model=model, messages=messages, options=options, format=fmt)
+    else:
+        r = chat(model=model, messages=messages, options=options, format=fmt)
 
     return LLMResult(
         content=r["message"]["content"],
@@ -67,11 +111,197 @@ def llm_chat(
         output_tokens=r.get("eval_count") or 0,
     )
 
+
+# ------------------------------------------------------- OpenAI-compatible
+# Servers that reject a response_format are remembered per base_url, so the
+# fallback (json_schema -> json_object -> plain prompt) costs one request.
+_FORMAT_DOWNGRADE: dict[str, str] = {}
+
+
+def _openai_chat(backend, model, system_prompt, user_prompt, temperature, schema,
+                 json_mode, seed, max_tokens) -> LLMResult:
+    base_url = (backend.get("base_url") or "https://api.openai.com/v1").rstrip("/")
+    headers = {"Content-Type": "application/json", **(backend.get("extra_headers") or {})}
+    key = _api_key(backend)
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+
+    mode = backend.get("structured_output", "json_schema")
+    mode = _FORMAT_DOWNGRADE.get(base_url, mode)
+    if schema is None:
+        mode = "json_object" if json_mode and mode != "none" else "none"
+
+    while True:
+        body: dict[str, Any] = {
+            "model": model,
+            "messages": [{"role": "system", "content": system_prompt},
+                         {"role": "user", "content": user_prompt}],
+            "temperature": temperature,
+        }
+        if max_tokens:
+            body["max_tokens"] = max_tokens
+        if seed is not None:
+            body["seed"] = seed
+        if mode == "json_schema" and schema is not None:
+            body["response_format"] = {"type": "json_schema",
+                                       "json_schema": {"name": "output", "schema": schema}}
+        elif mode == "json_object":
+            body["response_format"] = {"type": "json_object"}
+        try:
+            data = _post_json(f"{base_url}/chat/completions", body, headers,
+                              float(backend.get("timeout_s", 120)))
+            break
+        except _HTTPError as exc:
+            if exc.status == 400 and "response_format" in body and mode != "none":
+                mode = "json_object" if mode == "json_schema" else "none"
+                _FORMAT_DOWNGRADE[base_url] = mode
+                logger.warning("%s rejected response_format; falling back to %s", base_url, mode)
+                continue
+            raise
+
+    choice = (data.get("choices") or [{}])[0]
+    usage = data.get("usage") or {}
+    return LLMResult(
+        content=(choice.get("message") or {}).get("content") or "",
+        done_reason="length" if choice.get("finish_reason") == "length" else (choice.get("finish_reason") or "unknown"),
+        prompt_tokens=usage.get("prompt_tokens") or 0,
+        output_tokens=usage.get("completion_tokens") or 0,
+    )
+
+
+# ---------------------------------------------------------------- Anthropic
+ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_VERSION = "2023-06-01"
+
+
+def _anthropic_chat(backend, model, system_prompt, user_prompt, temperature, schema,
+                    json_mode, max_tokens) -> LLMResult:
+    headers = {"Content-Type": "application/json", "anthropic-version": ANTHROPIC_VERSION,
+               "x-api-key": _api_key(backend) or ""}
+    body: dict[str, Any] = {
+        "model": model,
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_prompt}],
+        "max_tokens": max_tokens or 4096,
+        "temperature": temperature,
+    }
+    if schema is not None:
+        # A forced tool call makes the model return arguments matching the schema.
+        body["tools"] = [{"name": "emit_output", "description": "Return the result.",
+                          "input_schema": schema}]
+        body["tool_choice"] = {"type": "tool", "name": "emit_output"}
+    data = _post_json(backend.get("base_url") or ANTHROPIC_URL, body, headers,
+                      float(backend.get("timeout_s", 120)))
+
+    content = ""
+    for block in data.get("content", []):
+        if block.get("type") == "tool_use":
+            content = json.dumps(block.get("input", {}), ensure_ascii=False)
+            break
+        if block.get("type") == "text":
+            content += block.get("text", "")
+    usage = data.get("usage") or {}
+    return LLMResult(
+        content=content,
+        done_reason="length" if data.get("stop_reason") == "max_tokens" else (data.get("stop_reason") or "unknown"),
+        prompt_tokens=usage.get("input_tokens") or 0,
+        output_tokens=usage.get("output_tokens") or 0,
+    )
+
+
+# --------------------------------------------------------------- embeddings
+def embed_texts(backend: dict | None, model: str, texts: list[str], batch_size: int = 64) -> list[list[float]]:
+    """Embeddings from Ollama (default) or an OpenAI-compatible /embeddings endpoint."""
+    backend = backend or {}
+    provider = backend.get("provider", "ollama")
+    vectors: list[list[float]] = []
+    for start in range(0, len(texts), batch_size):
+        batch = texts[start:start + batch_size]
+        if provider == "ollama":
+            from ollama import Client, embed
+            r = (Client(host=backend["base_url"]).embed(model=model, input=batch)
+                 if backend.get("base_url") else embed(model=model, input=batch))
+            vectors.extend(r["embeddings"])
+        elif provider == "openai_compatible":
+            base_url = (backend.get("base_url") or "https://api.openai.com/v1").rstrip("/")
+            headers = {"Content-Type": "application/json", **(backend.get("extra_headers") or {})}
+            key = _api_key(backend)
+            if key:
+                headers["Authorization"] = f"Bearer {key}"
+            data = _with_retries(lambda: _post_json(f"{base_url}/embeddings", {"model": model, "input": batch},
+                                                    headers, float(backend.get("timeout_s", 120))),
+                                 int(backend.get("max_retries", 3)))
+            vectors.extend(item["embedding"] for item in sorted(data["data"], key=lambda d: d["index"]))
+        else:
+            raise ValueError(f"Provider {provider!r} has no embeddings endpoint; use ollama or openai_compatible.")
+    return vectors
+
+
+# ------------------------------------------------------------------ helpers
+class _HTTPError(Exception):
+    def __init__(self, status: int, body: str):
+        super().__init__(f"HTTP {status}: {body[:300]}")
+        self.status = status
+
+
+def _api_key(backend: dict) -> str | None:
+    env = backend.get("api_key_env")
+    if env:
+        key = os.environ.get(env)
+        if not key:
+            raise RuntimeError(f"Environment variable {env} (llm_backend.api_key_env) is not set.")
+        return key
+    return None
+
+
+def _post_json(url: str, body: dict, headers: dict, timeout: float) -> dict:
+    req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raise _HTTPError(exc.code, exc.read().decode("utf-8", "replace")) from None
+
+
+def _with_retries(call, max_retries: int) -> LLMResult:
+    """Retry rate limits, server errors and network failures with exponential backoff."""
+    for attempt in range(max_retries + 1):
+        try:
+            return call()
+        except _HTTPError as exc:
+            if exc.status not in (408, 409, 429, 500, 502, 503, 504) or attempt == max_retries:
+                raise
+            error = exc
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+            if attempt == max_retries:
+                raise
+            error = exc
+        delay = min(2 ** attempt, 30)
+        logger.warning("LLM call failed (%s); retrying in %ss", error, delay)
+        time.sleep(delay)
+    raise RuntimeError("unreachable")
+
+
+def inline_refs(schema: dict) -> dict:
+    """Resolve local $ref/$defs so every provider accepts the schema."""
+    defs = schema.get("$defs", {})
+
+    def walk(node):
+        if isinstance(node, dict):
+            if "$ref" in node and node["$ref"].startswith("#/$defs/"):
+                return walk(defs[node["$ref"].split("/")[-1]])
+            return {k: walk(v) for k, v in node.items() if k != "$defs"}
+        if isinstance(node, list):
+            return [walk(v) for v in node]
+        return node
+
+    return walk(schema)
+
 """
 Applies a function to each item in the iterable while preserving order.
 
 Executes sequentially if max_workers <= 1 or if there is only 1 item;
-otherwise uses thread concurrency via ThreadPoolExecutor. 
+otherwise uses thread concurrency via ThreadPoolExecutor.
 
 Returns:
     List[R]: List of results corresponding to the input items in original order.
@@ -80,7 +310,7 @@ def run_parallel(
     fn,                     # Callable function to apply to each element
     items,                  # Collection of items to process
     max_workers: int = 1    # Maximum number of thread workers. Defaults to 1 (sequential)
-) -> list:    
+) -> list:
 
     items = list(items)
 

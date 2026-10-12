@@ -15,6 +15,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                     "params:ontology_export.vocabulary_path",
                     "params:ontology_export.fail_on_violation",
                     "params:ontology_export.run_reasoner",
+                    "params:ontology_export.act_metadata_path",
                 ],
                 outputs=["ontology_rdf_graph", "shacl_report_graph", "ontology_export_summary"],
                 name="export_and_validate_node",

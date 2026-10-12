@@ -44,6 +44,13 @@ ONTOLOGY_VERSION = "0.1.0"
 SOURCE_REPOSITORY = "https://github.com/jmrozanec/eurlex-ontology-generation"
 
 CORE_CLASS_LOCAL = {"Party": "Party", "Asset": "Asset", "Legal_extension": "LegalExtension"}
+# CELEX sectors and, for sector 3 (legislation), the act-type letters.
+CELEX_SECTORS = {"1": "Treaties", "2": "International agreements", "3": "Legislation",
+                 "4": "Complementary legislation", "5": "Preparatory documents", "6": "Case-law",
+                 "7": "National transposition", "8": "National case-law", "9": "Parliamentary questions",
+                 "0": "Consolidated texts", "C": "Official Journal C series", "E": "EFTA documents"}
+CELEX_TYPES = {"3": {"R": "Regulation", "L": "Directive", "D": "Decision", "H": "Recommendation"}}
+
 RULE_CLASS = {"permissions": ODRL.Permission, "prohibitions": ODRL.Prohibition, "duties": ODRL.Duty}
 RULE_LINK = {"permissions": ODRL.permission, "prohibitions": ODRL.prohibition, "duties": ODRL.obligation}
 
@@ -117,7 +124,7 @@ def build_tbox(g: Graph, ns: dict, vocab: Vocabulary) -> None:
 
     for p in ("entityKind", "coreType", "supportChunks", "supportDocuments", "supportApprovedChunks",
               "typeSource", "kindConfidence", "actionObject", "actionLabel", "provision",
-              "mergedFrom", "upperClass", "coreClass"):
+              "mergedFrom", "upperClass", "coreClass", "status", "celex", "actType", "year"):
         g.add((eo[p], RDF.type, OWL.AnnotationProperty))
     g.add((eo.relatedIndividual, RDF.type, OWL.ObjectProperty))
     g.add((eo.memberState, RDF.type, OWL.DatatypeProperty))
@@ -148,8 +155,23 @@ def _support(g: Graph, eo: Namespace, node, support: Any) -> None:
                 g.add((node, prop, Literal(int(support[key]), datatype=XSD.integer)))
 
 
+def parse_celex(celex: str) -> dict:
+    """Sector, year, act type and a readable label from a CELEX number.
+    32018D1859 -> sector 3 (legislation), 2018, Decision, '(EU) 2018/1859'."""
+    m = re.match(r"^([0-9CE])(\d{4})([A-Z]{1,2})(\d+)", celex or "")
+    if not m:
+        return {"act_type": "Unknown", "label": celex or "unknown act"}
+    sector, year, letter, number = m.groups()
+    types = CELEX_TYPES.get(sector, {})
+    act_type = types.get(letter, f"{CELEX_SECTORS.get(sector, 'Sector ' + sector)} ({letter})")
+    return {"sector": sector, "sector_label": CELEX_SECTORS.get(sector, sector), "year": year,
+            "act_type": act_type, "number": str(int(number)),
+            "label": f"{act_type} {year}/{int(number)}"}
+
+
 def export_rdf(refined: dict, base_iri: str = DEFAULT_BASE_IRI,
-               vocabulary_path: str | None = None) -> tuple[Graph, dict]:
+               vocabulary_path: str | None = None,
+               act_metadata: dict | None = None) -> tuple[Graph, dict]:
     """Return (graph, stats). `refined` is the output of the ontology_refinement pipeline."""
     vocab = load_vocabulary(vocabulary_path)
     ns = namespaces(base_iri)
@@ -159,8 +181,9 @@ def export_rdf(refined: dict, base_iri: str = DEFAULT_BASE_IRI,
                       ("owl", OWL), ("skos", SKOS), ("wd", WD), ("dct", DCTERMS)):
         g.bind(prefix, n)
     build_tbox(g, ns, vocab)
-    stats = {"classes": 0, "individuals": 0, "rules": 0, "relationships": 0, "constraints": 0,
-             "skipped": []}
+    stats = {"classes": 0, "accepted_classes": 0, "candidate_classes": 0, "individuals": 0, "rules": 0,
+             "relationships": 0, "constraints": 0, "policies": 0, "skipped": []}
+    EO = eo
 
     iri_of: dict[str, URIRef] = {}
     used_locals: set[str] = set()
@@ -197,7 +220,10 @@ def export_rdf(refined: dict, base_iri: str = DEFAULT_BASE_IRI,
         if c.get("is_a") in vocab.upper:
             g.add((node, RDFS.subClassOf, eo[c["is_a"]]))
         describe(node, c, "class")
+        status = c.get("status") or "accepted"
+        g.add((node, eo.status, Literal(status)))
         stats["classes"] += 1
+        stats[f"{status}_classes"] += 1
 
     for i in refined.get("individuals", []):
         node = entity_iri(i["name"])
@@ -230,14 +256,45 @@ def export_rdf(refined: dict, base_iri: str = DEFAULT_BASE_IRI,
         g.add((iri_of[s], prop, iri_of[t]))
         stats["relationships"] += 1
 
-    policy = pol["eurlex_policy"]
-    g.add((policy, RDF.type, ODRL.Set))
-    g.add((policy, ODRL.uid, policy))
-    g.add((policy, RDFS.label, Literal("Rights and obligations extracted from EUR-Lex", lang="en")))
+    # One odrl:Set per legal act (CELEX): a rule belongs to every act it was
+    # extracted from. Rules without provenance go to an explicit fallback set.
+    policies: dict[str, URIRef] = {}
+
+    def policy_for(celex: str | None) -> URIRef:
+        key = celex or "unattributed"
+        if key not in policies:
+            # CELEX numbers are already IRI-safe (32018D1859); keep them verbatim
+            segment = celex if celex and re.fullmatch(r"[A-Za-z0-9()]+", celex) else local_name(celex or "")
+            node = pol[f"act/{segment}" if celex else "unattributed"]
+            policies[key] = node
+            g.add((node, RDF.type, ODRL.Set))
+            g.add((node, ODRL.uid, node))
+            if celex:
+                info = parse_celex(celex)
+                g.add((node, RDFS.label, Literal(f"Rules extracted from {info['label']} (CELEX {celex})", lang="en")))
+                g.add((node, EO.celex, Literal(celex)))
+                g.add((node, EO.actType, Literal(info["act_type"])))
+                if info.get("year"):
+                    g.add((node, EO.year, Literal(info["year"], datatype=XSD.gYear)))
+                g.add((node, RDFS.seeAlso, URIRef(f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{celex}")))
+                g.add((node, RDFS.seeAlso, URIRef(f"http://publications.europa.eu/resource/celex/{celex}")))
+                meta = (act_metadata or {}).get(celex) or {}
+                if meta.get("title"):
+                    g.add((node, DCTERMS.title, Literal(meta["title"], lang="en")))
+                if meta.get("date"):
+                    iso = parse_date(meta["date"]) or (meta["date"] if re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(meta["date"])) else None)
+                    if iso:
+                        g.add((node, DCTERMS.issued, Literal(iso, datatype=XSD.date)))
+            else:
+                g.add((node, RDFS.label, Literal("Rules without source-act provenance", lang="en")))
+            stats["policies"] = len(policies)
+        return policies[key]
+
     for kind in ("permissions", "prohibitions", "duties"):
         for r in (refined.get("rights_model") or {}).get(kind, []):
-            node = pol[_rule_id(kind, r)]
-            g.add((policy, RULE_LINK[kind], node))
+            node = pol[r.get("id") or _rule_id(kind, r)]
+            for celex in (r.get("sources") or [None]):
+                g.add((policy_for(celex), RULE_LINK[kind], node))
             g.add((node, RDF.type, RULE_CLASS[kind]))
             action = r.get("action")
             if action in vocab.actions:

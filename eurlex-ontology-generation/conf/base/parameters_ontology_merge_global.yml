@@ -11,6 +11,8 @@ ontology_merge_global:
   provenance_path: data/06_models/eurlex_odrl_ontology_merged_provenance.json
   cluster_report_path: data/06_models/eurlex_odrl_ontology_merged_cluster_report.csv
   embedding_model: all-minilm
+  # Backend profile from conf/base/globals.yml (ollama or openai_compatible).
+  embedding_backend: ${globals:llm_backends.local}
   # Slightly higher threshold at the global level: partition-level
   # classes are already partial merges, so mentions reaching this stage
   # are individually "cleaner" and a stricter threshold reduces the risk

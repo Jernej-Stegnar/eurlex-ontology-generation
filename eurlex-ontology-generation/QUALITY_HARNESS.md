@@ -113,8 +113,22 @@ Graph layout: `eo:Party ≡ odrl:Party`, `eo:Asset ≡ odrl:Asset` and
 domain classes are `owl:Class` + `rdfs:subClassOf` an upper class; individuals
 are `owl:NamedIndividual` typed with an upper class, `owl:sameAs` their Wikidata
 item and `skos:exactMatch` their EU Vocabularies IRI. Rules are
-`odrl:Permission/Prohibition/Duty` in one `odrl:Set`, with typed constraints
-(`xsd:date`, `xsd:decimal`, `odrl:unit` = EU currency IRI).
+`odrl:Permission/Prohibition/Duty` with typed constraints (`xsd:date`,
+`xsd:decimal`, `odrl:unit` = EU currency IRI), grouped in **one `odrl:Set` per
+act** (`policy/act/<CELEX>`). Each act policy carries `eo:celex`, `eo:actType`
+(Regulation / Directive / Decision / Recommendation, parsed from the CELEX
+number), `eo:year`, `dct:title` and `dct:issued` (from `eurlex_corpus.csv`) and
+`rdfs:seeAlso` the EUR-Lex page and the CELLAR CELEX IRI. A rule found in several
+acts is attached to each of them; rules without a source go to
+`policy/unattributed`. Provenance (`sources`, a list of CELEX numbers) is kept on
+every class and rule through the partition and global merges.
+
+**Class promotion.** A domain class is `eo:status "accepted"` when it occurs in
+at least `min_documents_for_class` acts (default 3, in
+`parameters_ontology_refinement.yml`), otherwise `"candidate"` (SHACL Info).
+Candidates one act short of the threshold go to the review queue as
+`class_promotion` items; a person can promote or demote any class by a curation
+decision.
 
 ### Namespace
 IRIs live under the persistent namespace `https://w3id.org/eurlex-odrl/`
@@ -146,6 +160,72 @@ uv run python scripts/link_identifiers.py --verify                       # label
 uv run python scripts/link_identifiers.py --corporate-body-rdf <file> --write   # fill corporate-body IRIs
 ```
 
+## LLM backends
+Each LLM step (`ontology_generation`, `ontology_review`, `ontology_revision`)
+and the embedding step of both merges has its own `llm_backend` /
+`embedding_backend`, chosen from the profiles in `conf/base/globals.yml`:
+
+| Profile | Provider | Key (environment variable) |
+|---|---|---|
+| `local` (default) | Ollama on this machine | none |
+| `ollama_remote` | Ollama on another host (`base_url`) | none |
+| `vllm`, `lmstudio` | OpenAI-compatible server | none |
+| `openrouter` | OpenAI-compatible | `OPENROUTER_API_KEY` |
+| `openai` | OpenAI | `OPENAI_API_KEY` |
+| `anthropic` | Anthropic Messages API | `ANTHROPIC_API_KEY` |
+
+Example `conf/local/parameters_ontology_review.yml` (git-ignored):
+```yaml
+ontology_review:
+  model: anthropic/claude-sonnet-4.5
+  llm_backend: ${globals:llm_backends.openrouter}
+```
+Keys are read from the environment only, never from parameter files. Structured
+output uses a JSON schema where the server supports it (falls back to JSON mode,
+then plain prompting, once per server); Anthropic uses a forced tool call.
+Rate limits (429) and server errors are retried with backoff. Cursor has no
+public inference API, so it is used as an MCP *client* (below), not a backend.
+
+## Agent-assisted curation (MCP)
+The deterministic pipeline leaves a review queue
+(`data/08_reporting/ontology_refinement_report.json`: `entity_kind`,
+`type_conflict`, `class_promotion`, `rule_slot` items). An agent works through it
+with the MCP server in `agent/mcp_server.py`:
+
+```bash
+uv sync --extra agent
+uv run python -m eurlex_ontology_generation.agent.mcp_server --root .
+```
+Client configuration (Claude Desktop `claude_desktop_config.json`, Cursor
+`.cursor/mcp.json`, Claude Code `.mcp.json`):
+```json
+{"mcpServers": {"eurlex-curation": {
+  "command": "uv",
+  "args": ["run", "--directory", "/path/to/eurlex-ontology-generation",
+           "python", "-m", "eurlex_ontology_generation.agent.mcp_server", "--root", "."],
+  "env": {"CURATION_PROPOSER": "cursor-jane"}}}}
+```
+Tools: `review_queue`, `get_entity`, `get_rule`, `get_chunk`, `search_text`,
+`act_metadata` (optionally CELLAR), `gazetteer_lookup`, `wikidata_lookup`,
+`extract_chunk` (runs the generation step with the configured backend),
+`check_ontology`, `validate_decision`, `propose_decision`, `list_decisions`.
+
+Guard rails:
+- the agent never edits the ontology; `propose_decision` appends to
+  `data/05_model_input/curation/decisions.jsonl`;
+- every proposal is validated first (re-refine, export, SHACL; HermiT with
+  `reasoner=true`); one that adds violations or breaks consistency is stored as
+  `rejected_by_validation`;
+- only people accept proposals:
+  ```bash
+  uv run python scripts/curation.py list
+  uv run python scripts/curation.py show <id>
+  uv run python scripts/curation.py accept <id> --reviewer "Name"
+  uv run kedro run --pipelines ontology_refinement,ontology_export
+  ```
+  The refinement pipeline applies accepted decisions only (`set_typing`,
+  `merge_entities`, `remove_rule`, `promote_class`, `demote_class`).
+
 ## Running
 ```bash
 uv run python scripts/run_ontology_batches.py --max-batches 10 --review-rounds 2
@@ -153,12 +233,19 @@ uv run python scripts/run_ontology_merge.py          # partitions, global, refin
 uv run kedro run --pipelines ontology_refinement     # refinement only (no LLM)
 uv run kedro run --pipelines ontology_export          # Turtle + SHACL + HermiT
 uv sync --extra reasoner                              # owlready2 for the HermiT check
-uv run pytest tests/test_quality_harness.py tests/test_rdf_export.py
+uv run pytest tests/test_quality_harness.py tests/test_rdf_export.py tests/test_llm_backends.py tests/test_agent_workbench.py
 ```
 
 ## Not done here
 - Corporate-body IRIs other than the Commission's (run `link_identifiers.py`
   with the downloaded authority table).
 - Chunking on article boundaries (recitals are only flagged, not separated).
+- The data outputs committed under `data/05`-`data/08` predate provenance
+  tracking, so they have no per-act policies yet. Rerun
+  `scripts/run_ontology_merge.py --force` with Ollama running (embedding-based
+  merging) to regenerate them. A test run without Ollama (exact-key merging) gave
+  224 merged classes and 505 rules, all with sources; after refinement 179 classes
+  (12 accepted, 167 candidate), 45 individuals, 502 rules in 42 act policies;
+  HermiT consistent, 0 SHACL violations.
 - The new prompts and schema have not been run against Ollama in this branch;
   run a few batches and compare with `evaluate_ontology.py`.

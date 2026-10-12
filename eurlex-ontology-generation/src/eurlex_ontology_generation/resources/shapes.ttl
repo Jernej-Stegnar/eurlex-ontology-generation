@@ -266,3 +266,29 @@ eosh:RelationshipEndpointShape
         ?path a owl:ObjectProperty .
         FILTER NOT EXISTS { ?value eo:entityKind ?k }
       }""" ] .
+
+# ---------------------------------------------------------------- provenance and promotion
+eosh:CandidateClassShape
+  a sh:NodeShape ;
+  sh:targetSubjectsOf eo:status ;
+  sh:severity sh:Info ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "Candidate class: supported by too few acts to be accepted (see min_documents_for_class)." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this WHERE { $this eo:status "candidate" . }""" ] .
+
+eosh:ActPolicyShape
+  a sh:NodeShape ;
+  sh:targetClass odrl:Set ;
+  sh:severity sh:Warning ;
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "Policy has no source act (CELEX): rules without provenance." ;
+    sh:prefixes eosh: ;
+    sh:select """
+      SELECT $this WHERE {
+        FILTER NOT EXISTS { $this eo:celex ?c }
+        FILTER EXISTS { $this odrl:permission|odrl:prohibition|odrl:obligation ?r }
+      }""" ] .

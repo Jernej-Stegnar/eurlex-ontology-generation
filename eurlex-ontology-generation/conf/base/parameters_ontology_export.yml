@@ -21,3 +21,7 @@ ontology_export:
   # OWL 2 consistency check with HermiT (owlready2 + Java). Skipped, and
   # reported as unavailable, when either is missing.
   run_reasoner: true
+  # Titles and dates for the per-act ODRL policies, from the cleaned corpus
+  # written by eurlex_ingestion (CELEX, Act_name, Date_document). Optional:
+  # without it each act policy still gets CELEX, act type, year and links.
+  act_metadata_path: data/02_intermediate/eurlex_corpus.csv

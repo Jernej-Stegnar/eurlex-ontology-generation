@@ -8,6 +8,15 @@ ontology_refinement:
   # outputs are the catalog datasets `refined_ontology` and `refinement_report`
   vocabulary_path: null      # null = packaged resources/vocabulary.yml
 
+  # Class promotion: a domain class needs support from at least this many
+  # distinct acts (CELEX) to be `accepted`; below it stays a `candidate`
+  # (kept, flagged in the export) unless a curation decision promotes it.
+  min_documents_for_class: 3
+
+  # Curation decisions (JSONL). The MCP server and scripts/curation.py append
+  # proposals here as `pending`; only lines a person marked `accepted` are applied.
+  curation_path: data/05_model_input/curation/decisions.jsonl
+
   # Optional: confirm low-confidence class/individual decisions on Wikidata
   # (P31 instance of vs P279 subclass of). Needs network access; results are
   # cached so each label is looked up once. Off by default.
