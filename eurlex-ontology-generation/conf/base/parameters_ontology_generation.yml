@@ -11,6 +11,7 @@ ontology_generation:
   batch_group_size: 1000  # Number of batches that are grouped into the same persistent file
   output_directory: data/04_feature/ontology_candidates
   temperature: 0.1        # Controls randomness: lower values (close to 0) make output deterministic
+  num_ctx: 8192           # Ollama context window; set explicitly so it does not depend on the server default
   ontology_domain: ODRL   # Domain of the ontology
   json_mode: true
 

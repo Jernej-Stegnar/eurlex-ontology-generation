@@ -125,6 +125,7 @@ def generate_partial_ontologies(
     llm_backend: dict,
     structured_output: bool = False,
     vocabulary_path: str | None = None,
+    num_ctx: int | None = None,
 ) -> pd.DataFrame:
 
     # The system prompt carries the controlled vocabulary; render it once.
@@ -142,6 +143,7 @@ def generate_partial_ontologies(
             llm_backend, model, rendered_system_prompt, user_prompt, temperature,
             schema_model=schema_model,
             json_mode=json_mode,
+            num_ctx=num_ctx,
         )
         ontology_json = extract_json(response.content)
         return {
@@ -149,6 +151,11 @@ def generate_partial_ontologies(
             "chunk_id": row["chunk_id"],
             "CELEX": row["CELEX"],
             "ontology": json.dumps(ontology_json, ensure_ascii=False),
+            # Token usage, so truncation (done_reason "length") or a prompt
+            # near num_ctx is visible instead of a generic invalid-JSON row
+            "done_reason": response.done_reason,
+            "prompt_tokens": response.prompt_tokens,
+            "output_tokens": response.output_tokens,
         }
 
     rows = [row for _, row in chunks.iterrows()]
