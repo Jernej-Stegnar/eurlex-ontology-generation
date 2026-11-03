@@ -119,7 +119,9 @@ def reasoner_check(data: Graph, timeout_note: str = "") -> dict:
         path = Path(tmp) / "ontology.nt"
         data.serialize(destination=str(path), format="nt", encoding="utf-8")
         world = World()
-        onto = world.get_ontology(path.as_uri()).load()
+        # Pass a file object: owlready2 turns a file:/// URI into "/C:/..." on Windows
+        with open(path, "rb") as fileobj:
+            onto = world.get_ontology(path.as_uri()).load(fileobj=fileobj)
         try:
             with onto:
                 sync_reasoner(world, infer_property_values=False, debug=0)
