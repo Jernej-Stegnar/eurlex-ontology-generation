@@ -143,6 +143,11 @@ global_merge_path:
 concept_profile:
   type: json.JSONDataset
   filepath: data/05_model_input/concept_profile.json
+  fs_args:
+    open_args_save:
+      encoding: utf-8
+    open_args_load:
+      encoding: utf-8
   save_args:
     indent: 2
 
@@ -154,6 +159,11 @@ merge_rules_raw:
 merge_rules:
   type: json.JSONDataset
   filepath: data/05_model_input/merge_rules.json
+  fs_args:
+    open_args_save:
+      encoding: utf-8
+    open_args_load:
+      encoding: utf-8
   save_args:
     indent: 2
 
@@ -161,6 +171,11 @@ merge_rules:
 final_merged_ontology_v2:
   type: json.JSONDataset
   filepath: data/07_model_output/final_merged_ontology_v2.json
+  fs_args:
+    open_args_save:
+      encoding: utf-8
+    open_args_load:
+      encoding: utf-8
   save_args:
     indent: 2
 
@@ -168,6 +183,11 @@ final_merged_ontology_v2:
 rule_application_trace:
   type: json.JSONDataset
   filepath: data/08_reporting/rule_application_trace.json
+  fs_args:
+    open_args_save:
+      encoding: utf-8
+    open_args_load:
+      encoding: utf-8
   save_args:
     indent: 2
 
@@ -176,6 +196,11 @@ rule_application_trace:
 refined_ontology:
   type: json.JSONDataset
   filepath: data/07_model_output/eurlex_odrl_ontology_refined.json
+  fs_args:
+    open_args_save:
+      encoding: utf-8
+    open_args_load:
+      encoding: utf-8
   save_args:
     indent: 2
     ensure_ascii: false
@@ -183,6 +208,11 @@ refined_ontology:
 refinement_report:
   type: json.JSONDataset
   filepath: data/08_reporting/ontology_refinement_report.json
+  fs_args:
+    open_args_save:
+      encoding: utf-8
+    open_args_load:
+      encoding: utf-8
   save_args:
     indent: 2
     ensure_ascii: false
