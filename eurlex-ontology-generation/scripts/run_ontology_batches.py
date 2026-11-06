@@ -16,6 +16,55 @@ MANIFEST_PATH = Path(
 # Protects the manifest when several batches run at the same time
 manifest_lock = threading.Lock()
 
+# One row per chunk and step that did not produce a clean result (cut-off
+# answer, invalid JSON, failed review or revision), appended as the run goes.
+# A chunk with no row here came through every step cleanly.
+ISSUES_PATH = Path("logs/chunk_issues.csv")
+ISSUE_COLUMNS = ["logged_at", "batch_id", "round", "step", "chunk_id", "CELEX",
+                 "status", "done_reason", "output_tokens", "detail"]
+issues_lock = threading.Lock()
+
+
+def log_chunk_issues(rows: list[dict]) -> None:
+    if not rows:
+        return
+    stamp = pd.Timestamp.now().isoformat(timespec="seconds")
+    frame = pd.DataFrame([{**{c: "" for c in ISSUE_COLUMNS}, **r, "logged_at": stamp} for r in rows],
+                         columns=ISSUE_COLUMNS)
+    with issues_lock:
+        ISSUES_PATH.parent.mkdir(parents=True, exist_ok=True)
+        frame.to_csv(ISSUES_PATH, mode="a", header=not ISSUES_PATH.exists(), index=False, encoding="utf-8")
+
+
+def _batch_rows(directory: str, batch_id: int) -> pd.DataFrame:
+    path = Path(directory) / f"part_{batch_id // 1000:03d}.csv"
+    if not path.exists():
+        return pd.DataFrame()
+    frame = pd.read_csv(path, encoding="utf-8")
+    return frame[frame["batch_id"] == batch_id]
+
+
+def _value(row, column: str, default=""):
+    value = row.get(column, default)
+    return default if pd.isna(value) else value
+
+
+# Generation never fails a batch on a bad chunk, but a cut-off or invalid
+# answer must still be visible
+def check_generation_output(batch_id: int) -> list[str]:
+    rows = []
+    for _, r in _batch_rows("data/04_feature/ontology_candidates", batch_id).iterrows():
+        cut = _value(r, "done_reason") == "length"
+        invalid = str(_value(r, "ontology")).lstrip().startswith('{"error"')
+        if cut or invalid:
+            rows.append({"batch_id": batch_id, "round": 0, "step": "generation",
+                         "chunk_id": r["chunk_id"], "CELEX": r["CELEX"],
+                         "status": "truncated_output" if cut else "invalid_json",
+                         "done_reason": _value(r, "done_reason"),
+                         "output_tokens": _value(r, "output_tokens")})
+    log_chunk_issues(rows)
+    return [r["chunk_id"] for r in rows]
+
 
 # Load the persistent batch manifest
 def load_manifest() -> pd.DataFrame:
@@ -198,6 +247,14 @@ def validate_review_output(
         )
     ]
 
+    # 'invalid_ontology' does not stop the batch (the revision repairs it), but is logged
+    log_chunk_issues([
+        {"batch_id": batch_id, "round": review_round, "step": "review",
+         "chunk_id": r["chunk_id"], "CELEX": r["CELEX"], "status": r["status"],
+         "detail": _value(r, "error_reason")}
+        for _, r in batch_reviews[batch_reviews["status"].isin(["error", "invalid_ontology"])].iterrows()
+    ])
+
     if not failed_reviews.empty:
         print(
             f"Review failed for "
@@ -212,15 +269,18 @@ def validate_review_output(
 
 
 """
-Check that ontology revision produced a valid result for the batch.
+Check that ontology revision produced a result for every chunk of the batch.
 
-A revision fallback means that the LLM revision failed, so the
-batch must not be marked as completed.
+A revision fallback (cut-off or invalid answer: the previous ontology is
+kept) is a failure of that chunk only. It is logged to ISSUES_PATH and the
+batch carries on, so the other chunks still get their review rounds. Only
+missing output fails the batch.
 """
 def validate_revision_output(
     batch_id: int,
     expected_count: int,
-) -> bool:    
+    revision_round: int = 1,
+) -> bool:
 
     group_id = batch_id // 1000
 
@@ -260,10 +320,17 @@ def validate_revision_output(
 
     if not failed_revisions.empty:
         print(
-            f"Revision failed for "
-            f"{len(failed_revisions)} chunk(s)."
+            f"[batch {batch_id}] round {revision_round}: revision failed for "
+            f"{len(failed_revisions)} chunk(s), previous version kept: "
+            f"{', '.join(failed_revisions['chunk_id'].astype(str))}",
+            flush=True,
         )
-        return False
+        log_chunk_issues([
+            {"batch_id": batch_id, "round": revision_round, "step": "revision",
+             "chunk_id": r["chunk_id"], "CELEX": r["CELEX"], "status": r["revision_status"],
+             "done_reason": _value(r, "done_reason"), "output_tokens": _value(r, "output_tokens")}
+            for _, r in failed_revisions.iterrows()
+        ])
 
     return True
 
@@ -283,6 +350,9 @@ def run_batch(
     if run_pipeline("ontology_generation", "ontology_generation", batch_id) != 0:
         print(f"Ontology generation failed for batch {batch_id}.")
         return False
+    bad = check_generation_output(batch_id)
+    if bad:
+        print(f"[batch {batch_id}] generation: cut-off or invalid output for {', '.join(bad)}", flush=True)
 
     # Step 2: Review the generator's candidates (round 0).
     if run_pipeline("ontology_review", "ontology_review", batch_id,
@@ -307,9 +377,11 @@ def run_batch(
             print(f"Ontology revision pipeline failed for batch {batch_id}.")
             return False
 
-        # The revision pipeline can keep the original ontology when
-        # the LLM output is truncated or invalid. Detect that explicitly.
-        if not validate_revision_output(batch_id=batch_id, expected_count=expected_count):
+        # The revision pipeline can keep the original ontology when the LLM
+        # output is truncated or invalid; that is logged per chunk, and only
+        # missing output stops the batch.
+        if not validate_revision_output(batch_id=batch_id, expected_count=expected_count,
+                                        revision_round=review_round):
             print(f"Ontology revision validation failed for batch {batch_id}.")
             return False
 
