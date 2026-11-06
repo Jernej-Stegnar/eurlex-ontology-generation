@@ -126,6 +126,7 @@ def generate_partial_ontologies(
     structured_output: bool = False,
     vocabulary_path: str | None = None,
     num_ctx: int | None = None,
+    seed: int | None = None,
 ) -> pd.DataFrame:
 
     # The system prompt carries the controlled vocabulary; render it once.
@@ -143,6 +144,7 @@ def generate_partial_ontologies(
             llm_backend, model, rendered_system_prompt, user_prompt, temperature,
             schema_model=schema_model,
             json_mode=json_mode,
+            seed=seed,
             num_ctx=num_ctx,
         )
         ontology_json = extract_json(response.content)

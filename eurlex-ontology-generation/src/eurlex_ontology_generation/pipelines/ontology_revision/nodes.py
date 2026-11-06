@@ -106,6 +106,7 @@ def revise_ontologies(
     revision_round: int = 1,
     normalize_after_revision: bool = True,
     vocabulary_path: str | None = None,
+    seed: int | None = None,
 ) -> pd.DataFrame:
 
     rendered_system_prompt = render_prompt(system_prompt, vocabulary_path)
@@ -151,6 +152,7 @@ def revise_ontologies(
         response = llm_chat(
             llm_backend, model, rendered_system_prompt, user_prompt, temperature,
             schema_model=schema_model,
+            seed=seed,
             num_ctx=num_ctx,
             max_tokens=num_predict,
         )

@@ -28,6 +28,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 "params:ontology_revision.round",
                 "params:ontology_revision.normalize_after_revision",
                 "params:ontology_revision.vocabulary_path",
+                "params:ontology_revision.seed",
             ],
             outputs="ontology_revised",
             name="revise_ontologies_node",

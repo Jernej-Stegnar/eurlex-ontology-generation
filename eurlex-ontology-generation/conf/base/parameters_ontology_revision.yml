@@ -8,6 +8,7 @@ ontology_revision:
 
   model: gemma3:4b  
   temperature: 0.0
+  seed: 42           # Fixed sampling seed, so reruns with the same settings are comparable
   json_mode: true
 
   # Execution backend and parallelism settings for LLM inference
