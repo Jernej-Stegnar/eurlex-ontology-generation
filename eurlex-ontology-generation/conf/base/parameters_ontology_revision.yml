@@ -32,7 +32,7 @@ ontology_revision:
 
   # Ollama generation options to avoid output truncation on long prompts (source text + ontology + review can be sizeable)
   num_ctx: 16384        # context window size (tokens)
-  num_predict: 3072     # max tokens the model can generate for the answer
+  num_predict: 6144     # max tokens for the answer; a revision rewrites the whole ontology, and 3072 cut off dense chunks (2026-11-06)
 
   system_prompt: |
     You are an expert ontology engineer specialized in ODRL 2.2, legal knowledge representation, and EUR-Lex documents.
