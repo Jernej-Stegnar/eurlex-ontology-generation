@@ -134,9 +134,16 @@ def _openai_chat(backend, model, system_prompt, user_prompt, temperature, schema
         mode = "json_object" if json_mode and mode != "none" else "none"
 
     while True:
+        # Without json_schema the server cannot enforce the schema, and prompts
+        # that say "follow the provided schema" would leave the model guessing
+        # field names; so the schema goes into the system prompt instead.
+        system = system_prompt
+        if schema is not None and mode != "json_schema":
+            system += ("\n\nReturn only a JSON object that conforms to this JSON Schema:\n"
+                       + json.dumps(schema, ensure_ascii=False))
         body: dict[str, Any] = {
             "model": model,
-            "messages": [{"role": "system", "content": system_prompt},
+            "messages": [{"role": "system", "content": system},
                          {"role": "user", "content": user_prompt}],
             "temperature": temperature,
             **(backend.get("extra_body") or {}),
