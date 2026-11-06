@@ -7,6 +7,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
+from filelock import FileLock
 
 
 MANIFEST_PATH = Path(
@@ -47,6 +48,23 @@ def _batch_rows(directory: str, batch_id: int) -> pd.DataFrame:
 def _value(row, column: str, default=""):
     value = row.get(column, default)
     return default if pd.isna(value) else value
+
+
+# Remove this batch's reviews from `from_round` on (reviews are keyed by
+# chunk and round, so they would otherwise outlive a resumed run). Revisions
+# are keyed by chunk only and are rewritten by the next revision round.
+def purge_review_rounds(batch_id: int, from_round: int) -> None:
+    path = Path("data/04_feature/ontology_reviews") / f"part_{batch_id // 1000:03d}.csv"
+    if not path.exists():
+        return
+    with FileLock(str(path) + ".lock"):
+        reviews = pd.read_csv(path, encoding="utf-8")
+        rounds = reviews["round"].fillna(0).astype(int) if "round" in reviews.columns else 0
+        stale = (reviews["batch_id"] == batch_id) & (rounds >= from_round)
+        if stale.any():
+            reviews[~stale].to_csv(path, index=False, encoding="utf-8")
+            print(f"[batch {batch_id}] removed {int(stale.sum())} review rows from round {from_round} on",
+                  flush=True)
 
 
 # Generation never fails a batch on a bad chunk, but a cut-off or invalid
@@ -110,6 +128,7 @@ def claim_next_batch(
     state: dict,
     start_batch: int | None,
     end_batch: int | None,
+    statuses: tuple[str, ...] = ("pending", "failed"),
 ):
 
     with manifest_lock:
@@ -117,7 +136,7 @@ def claim_next_batch(
             return None
 
         mask = (
-            manifest["status"].isin(["pending", "failed"])
+            manifest["status"].isin(list(statuses))
             & ~manifest["batch_id"].isin(state["attempted"])
         )
         if start_batch is not None:
@@ -344,21 +363,29 @@ def run_batch(
     batch_id: int,
     expected_count: int,
     review_rounds: int = 2,
+    from_round: int = 0,
 ) -> bool:
 
-    # Step 1: Generate candidate ontologies.
-    if run_pipeline("ontology_generation", "ontology_generation", batch_id) != 0:
-        print(f"Ontology generation failed for batch {batch_id}.")
-        return False
-    bad = check_generation_output(batch_id)
-    if bad:
-        print(f"[batch {batch_id}] generation: cut-off or invalid output for {', '.join(bad)}", flush=True)
+    if from_round == 0:
+        # Step 1: Generate candidate ontologies.
+        if run_pipeline("ontology_generation", "ontology_generation", batch_id) != 0:
+            print(f"Ontology generation failed for batch {batch_id}.")
+            return False
+        bad = check_generation_output(batch_id)
+        if bad:
+            print(f"[batch {batch_id}] generation: cut-off or invalid output for {', '.join(bad)}", flush=True)
 
-    # Step 2: Review the generator's candidates (round 0).
-    if run_pipeline("ontology_review", "ontology_review", batch_id,
-                    {"round": 0, "source": "candidates"}, "_r0") != 0:
-        print(f"Ontology review pipeline failed for batch {batch_id}.")
-        return False
+        # Step 2: Review the generator's candidates (round 0).
+        if run_pipeline("ontology_review", "ontology_review", batch_id,
+                        {"round": 0, "source": "candidates"}, "_r0") != 0:
+            print(f"Ontology review pipeline failed for batch {batch_id}.")
+            return False
+    else:
+        # Resume: keep the candidates and round-0 reviews already on disk,
+        # drop every later review round so none of them is left stale
+        purge_review_rounds(batch_id, from_round)
+        print(f"[batch {batch_id}] resuming at revision round {from_round}", flush=True)
+        check_generation_output(batch_id)   # log the kept candidates' issues in this run too
 
     # The review pipeline may exit successfully even if the LLM judge
     # returned an error for one or more chunks.
@@ -371,7 +398,7 @@ def run_batch(
     # Steps 3+: revise, then re-review the revision. Even when everything is
     # approved in round 0 one revision pass runs, so that every chunk goes
     # through the deterministic normalisation before the merge.
-    for review_round in range(1, max(review_rounds, 1) + 1):
+    for review_round in range(max(from_round, 1), max(review_rounds, 1) + 1):
         if run_pipeline("ontology_revision", "ontology_revision", batch_id,
                         {"round": review_round}, f"_r{review_round}") != 0:
             print(f"Ontology revision pipeline failed for batch {batch_id}.")
@@ -472,6 +499,14 @@ def parse_arguments() -> argparse.Namespace:
         default=None,
         help="Only process batches with batch_id <= this value.",
     )
+    parser.add_argument(
+        "--from-round",
+        type=int,
+        default=0,
+        help="Resume at this revision round (>= 1), keeping the candidates and round-0 "
+             "reviews on disk; later review rounds are discarded and redone. Completed "
+             "batches in the range are processed again.",
+    )
 
     return parser.parse_args()
 
@@ -499,7 +534,8 @@ def main() -> None:
     def worker() -> None:
         while True:
             claimed = claim_next_batch(
-                manifest, state, args.start_batch, args.end_batch
+                manifest, state, args.start_batch, args.end_batch,
+                ("pending", "failed", "completed") if args.from_round else ("pending", "failed"),
             )
             if claimed is None:
                 return
@@ -511,6 +547,7 @@ def main() -> None:
                     batch_id=batch_id,
                     expected_count=expected_count,
                     review_rounds=args.review_rounds,
+                    from_round=args.from_round,
                 )
             except Exception as exc:
                 print(f"[batch {batch_id}] exception: {exc}", flush=True)
