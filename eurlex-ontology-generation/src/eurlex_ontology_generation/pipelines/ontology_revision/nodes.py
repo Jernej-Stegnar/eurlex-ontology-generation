@@ -131,6 +131,11 @@ def revise_ontologies(
             "round": revision_round,
             "CELEX": row["CELEX"],
             "text": row["text"],
+            # Token usage of the revision call (empty when no call was made),
+            # so a cut-off answer is visible next to its status
+            "done_reason": "",
+            "prompt_tokens": 0,
+            "output_tokens": 0,
         }
 
         if not row["revision_required"]:
@@ -158,6 +163,8 @@ def revise_ontologies(
         )
         revision_text = response.content
         done_reason = response.done_reason
+        base.update(done_reason=done_reason, prompt_tokens=response.prompt_tokens,
+                    output_tokens=response.output_tokens)
 
         revised_ontology_json, used_fallback = extract_json(revision_text, row["ontology"])
 
