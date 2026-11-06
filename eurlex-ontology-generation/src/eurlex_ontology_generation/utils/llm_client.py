@@ -35,6 +35,8 @@ Executes a chat completion request against the configured backend.
             base_url            e.g. https://openrouter.ai/api/v1
             api_key_env         name of the environment variable with the key
             structured_output   json_schema (default) | json_object | none
+            extra_body          optional fields merged into every request,
+                                e.g. {thinking: {type: disabled}} for DeepSeek
   provider: anthropic           Anthropic Messages API (structured output via a
                                 forced tool call)
             api_key_env         e.g. ANTHROPIC_API_KEY
@@ -137,6 +139,7 @@ def _openai_chat(backend, model, system_prompt, user_prompt, temperature, schema
             "messages": [{"role": "system", "content": system_prompt},
                          {"role": "user", "content": user_prompt}],
             "temperature": temperature,
+            **(backend.get("extra_body") or {}),
         }
         if max_tokens:
             body["max_tokens"] = max_tokens
