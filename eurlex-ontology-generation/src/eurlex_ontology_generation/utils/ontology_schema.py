@@ -67,7 +67,7 @@ def build_ontology_model(vocabulary_path: str | None = None) -> type[BaseModel]:
     )
     rule_fields = dict(
         action=(_lit([*vocab.action_names, OTHER_ACTION]), Field(description="Canonical verb.")),
-        action_label=(str, Field(description="The action as worded in the text, snake_case, e.g. provide_financial_contribution.")),
+        action_label=(str, Field(description="The action as worded in the text, snake_case verb plus object.")),
         party=(str, Field(description="Class or individual name of the party that holds the permission, prohibition or duty (ODRL assignee).")),
         assigner=(str, Field("", description="Party that grants the permission or imposes the duty, if stated.")),
         asset=(str, Field("", description="Class or individual name the action applies to.")),

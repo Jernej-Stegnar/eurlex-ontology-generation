@@ -80,28 +80,33 @@ ontology_revision:
 
     Return ONLY a single valid JSON object representing the CORRECTED ontology, containing EXACTLY these top-level keys (no more, no less): ontology_name, description, odrl_alignment, classes, relationships, rights_model, legal_patterns, example_instances.
 
-    Example structure:
+    Structure (every value in <angle brackets> is a PLACEHOLDER describing what goes there; fill it from the source text and the candidate, never copy a placeholder, and never add a rule, amount or date that is not in the source text):
 
     {{
-      "ontology_name": "...",
-      "description": "...",
+      "ontology_name": "<ShortUniqueName>",
+      "description": "<short explanation of what this fragment covers>",
       "odrl_alignment": {{
         "core_entities": ["Asset", "Party", "Permission", "Prohibition", "Duty", "Constraint"],
-        "extensions": ["ExampleProcedure"]
+        "extensions": ["<name of each Legal_extension class>"]
       }},
       "classes": [
-        {{"name": "European_Commission", "type": "Party", "is_a": "EUInstitution", "kind": "individual", "description": "..."}},
-        {{"name": "ExampleProcedure", "type": "Legal_extension", "is_a": "Procedure", "kind": "class", "description": "..."}}
+        {{"name": "<NameAsInText>", "type": "<one core type>", "is_a": "<one parent from the upper ontology>", "kind": "<individual or class>", "description": "<definition grounded in the text>"}}
       ],
       "relationships": [
-        {{"source": "...", "relation": "governs", "target": "...", "description": "..."}}
+        {{"source": "<class or individual>", "relation": "<one allowed relation>", "target": "<class or individual>", "description": "<relationship as stated in the text>"}}
       ],
       "rights_model": {{
-        "permissions": [],
-        "prohibitions": [],
+        "permissions": [
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<what the action applies to>", "provision": "<article, annex or recital>",
+            "constraints": [{{"left_operand": "<allowed left operand>", "operator": "<allowed operator>", "right_operand": "<value copied word for word from the text>", "unit": "<unit from the text, or empty>"}}]}}
+        ],
+        "prohibitions": [
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<article, annex or recital>",
+            "constraints": []}}
+        ],
         "duties": [
-          {{"action": "submit", "action_label": "submit_application", "party": "...", "assigner": "", "asset": "...", "provision": "article",
-            "constraints": [{{"left_operand": "dateTime", "operator": "lteq", "right_operand": "2019-12-31", "unit": ""}}]}}
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<article, annex or recital>",
+            "constraints": []}}
         ]
       }},
       "legal_patterns": [
@@ -111,6 +116,8 @@ ontology_revision:
         {{"entity": "...", "example_value": "...", "source_context": "..."}}
       ]
     }}
+
+    The structure shows ONE placeholder rule per list only to show the format. Keep one rule per rule the text actually states: each list may hold none, one or many rules, and the three lists need not be the same length. Put a constraint only for a condition, date, amount or limit written in the text; otherwise use "constraints": [].
 
   # Re-review loop: the reviews file keeps one row per (chunk, round); the
   # revision reads the latest round. The orchestrator sets this per call.

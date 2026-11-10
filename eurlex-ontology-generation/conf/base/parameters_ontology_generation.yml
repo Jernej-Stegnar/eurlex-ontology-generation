@@ -51,7 +51,7 @@ ontology_generation:
     {upper_ontology}
     - kind: "individual" for ONE named thing (Latvia, the European Commission, the European Globalisation Adjustment Fund, Regulation (EU) No 1309/2013); "class" for a KIND of thing (Member State, application, financial contribution). Countries, institutions, bodies and named funds or programmes are ALWAYS individuals.
 
-    ACTIONS. "action" is one canonical verb from: {actions}. Use "other" only if none fits. Always also give "action_label": the action as worded in the text, snake_case (e.g. provide_financial_contribution).
+    ACTIONS. "action" is one canonical verb from: {actions}. Use "other" only if none fits. Always also give "action_label": the action as worded in the text, snake_case verb plus object.
 
     CONSTRAINTS. Each constraint is {{left_operand, operator, right_operand, unit}}:
     - left_operand from: {left_operands}
@@ -71,40 +71,44 @@ ontology_generation:
   user_prompt_template: |
     Analyze the following EUR-Lex legal text fragment and extract an ODRL-aligned ontology.
 
-    Return ONLY a single valid JSON object with this structure (values are illustrative):
+    Return ONLY a single valid JSON object with this structure. Every value in <angle brackets> is a PLACEHOLDER that describes what goes there: replace it with content taken from the EUR-Lex text below, or leave the list out/empty if the text has nothing of that kind. Never copy a placeholder, and never output a rule, amount or date that is not in the text.
 
     {{
-      "ontology_name": "ShortUniqueName",
-      "description": "Short explanation of this ontology's coverage",
+      "ontology_name": "<ShortUniqueName>",
+      "description": "<short explanation of what this fragment covers>",
       "odrl_alignment": {{
         "core_entities": ["Asset", "Party", "Permission", "Prohibition", "Duty", "Constraint"],
-        "extensions": ["NameOfEachLegal_extensionClass"]
+        "extensions": ["<name of each Legal_extension class>"]
       }},
       "classes": [
-        {{"name": "European_Commission", "type": "Party", "is_a": "EUInstitution", "kind": "individual", "description": "Definition grounded in the text"}},
-        {{"name": "FinancialContribution", "type": "Asset", "is_a": "FinancialInstrument", "kind": "class", "description": "Definition grounded in the text"}}
+        {{"name": "<NameAsInText>", "type": "<one core type>", "is_a": "<one parent from the upper ontology>", "kind": "<individual or class>", "description": "<definition grounded in the text>"}}
       ],
       "relationships": [
-        {{"source": "ClassOrIndividualA", "relation": "funds", "target": "ClassOrIndividualB", "description": "Relationship description"}}
+        {{"source": "<class or individual>", "relation": "<one allowed relation>", "target": "<class or individual>", "description": "<relationship as stated in the text>"}}
       ],
       "rights_model": {{
         "permissions": [
-          {{"action": "provide", "action_label": "provide_financial_contribution", "party": "PartyName", "assigner": "", "asset": "AssetName", "provision": "article",
-            "constraints": [{{"left_operand": "payAmount", "operator": "lteq", "right_operand": "50000000", "unit": "EUR"}}]}}
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<what the action applies to>", "provision": "<article, annex or recital>",
+            "constraints": [{{"left_operand": "<allowed left operand>", "operator": "<allowed operator>", "right_operand": "<value copied word for word from the text>", "unit": "<unit from the text, or empty>"}}]}}
         ],
-        "prohibitions": [],
+        "prohibitions": [
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<article, annex or recital>",
+            "constraints": []}}
+        ],
         "duties": [
-          {{"action": "submit", "action_label": "submit_application", "party": "PartyName", "assigner": "", "asset": "AssetName", "provision": "article",
-            "constraints": [{{"left_operand": "dateTime", "operator": "lteq", "right_operand": "2019-12-31", "unit": ""}}]}}
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<article, annex or recital>",
+            "constraints": []}}
         ]
       }},
       "legal_patterns": [
-        {{"pattern_name": "PatternName", "description": "Description of the legal interaction", "entities_involved": ["Entity1", "Entity2"]}}
+        {{"pattern_name": "<PatternName>", "description": "<the legal interaction>", "entities_involved": ["<entity>", "<entity>"]}}
       ],
       "example_instances": [
-        {{"entity": "EntityName", "example_value": "Short value copied from the text", "source_context": "The sentence it comes from, copied from the text"}}
+        {{"entity": "<entity>", "example_value": "<short value copied from the text>", "source_context": "<the sentence it comes from, copied from the text>"}}
       ]
     }}
+
+    The structure shows ONE placeholder rule per list only to show the format. Write one rule per rule the text actually states: each list may hold none, one or many rules, and the three lists need not be the same length (a fragment with only duties has empty permissions and prohibitions). Put a constraint only for a condition, date, amount or limit written in the text; otherwise use "constraints": [].
 
     EUR-Lex text:
     {text}
