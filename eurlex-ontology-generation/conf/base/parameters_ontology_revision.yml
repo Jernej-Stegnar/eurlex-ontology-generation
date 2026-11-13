@@ -51,7 +51,7 @@ ontology_revision:
     {upper_ontology}
     - "kind" is "individual" for one named thing (a country, an institution, a named fund or programme) and "class" for a kind of thing.
     - Never use Permission, Prohibition, Duty, Constraint, Assignee or Target in a class name: express such content as a rule in rights_model.
-    - Every rule keeps "asset" (short class name) and "action_object" (the object copied word for word from the source text with all its qualifiers). Fill in or complete action_object where it is missing or shortened; never cut it down to the class name.
+    - Every rule keeps "asset" (short class name) and "action_object" (the object copied word for word from the source text with all its qualifiers). Fill in or complete action_object where it is missing or shortened; never cut it down to the class name. action_object is a noun phrase, never a sentence: remove any subject and any "shall"/"must" verb from it, and move conditions into constraints.
     - Rule "action" is one canonical verb from: {actions} (or "other"); keep the original wording in "action_label".
     - Constraints are {{left_operand, operator, right_operand, unit}} with left_operand from: {left_operands}; operator from: {operators}.
     - Every condition the source sentence attaches to a rule gets its own constraint, copied word for word: purpose -> purpose; exception ("except", "unless") -> condition starting "except "; prerequisite ("subject to", "provided that", "where", "in accordance with") -> condition; scope restriction ("only") -> condition; dates, periods, amounts -> dateTime / elapsedTime / payAmount; triggering events -> event. Add conditions a rule is missing; never drop one.

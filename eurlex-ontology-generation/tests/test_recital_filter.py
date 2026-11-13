@@ -59,3 +59,20 @@ def test_normalizer_keeps_model_action_object():
     assert kept["action_object"].startswith("vehicles registered before 1 January 2010")
     from eurlex_ontology_generation.utils.vocabulary import load_vocabulary
     assert derived["action_object"] == load_vocabulary().normalize_action("register", "register_vehicles")["action_object"]
+
+
+def test_sentence_objects_are_dropped():
+    from eurlex_ontology_generation.utils.ontology_normalize import (
+        clean_action_objects, is_sentence_object, normalize_chunk_ontology)
+    assert is_sentence_object("This Decision shall be brought to the attention of staff")
+    assert is_sentence_object("operators MUST keep records")
+    assert not is_sentence_object("vehicles registered before 1 January 2010")
+    onto = {"rights_model": {"duties": [
+        {"action": "notify", "party": "MemberState", "action_object": "the Member State shall notify the measures"},
+        {"action": "notify", "party": "MemberState", "action_object": "the measures adopted"}]}}
+    out, n = clean_action_objects(onto)
+    assert n == 1 and "action_object" not in out["rights_model"]["duties"][0]
+    assert out["rights_model"]["duties"][1]["action_object"] == "the measures adopted"
+    norm, changes = normalize_chunk_ontology(onto)
+    assert any(c["code"] == "action_object_sentence_dropped" for c in changes)
+    assert not is_sentence_object(norm["rights_model"]["duties"][0]["action_object"])

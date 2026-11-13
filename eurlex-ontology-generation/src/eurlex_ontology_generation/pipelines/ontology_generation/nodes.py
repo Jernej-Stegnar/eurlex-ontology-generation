@@ -5,7 +5,7 @@ import pandas as pd
 from pathlib import Path
 
 from ...utils.llm_client import llm_chat, run_parallel
-from ...utils.ontology_normalize import drop_recital_rules
+from ...utils.ontology_normalize import clean_action_objects, drop_recital_rules
 from ...utils.ontology_schema import build_ontology_model
 from ...utils.persist import append_dedup_csv
 from ...utils.vocabulary import render_prompt
@@ -155,6 +155,8 @@ def generate_partial_ontologies(
         recitals_dropped = 0
         if drop_recitals:
             ontology_json, recitals_dropped = drop_recital_rules(ontology_json)
+        # An action_object that copies the provision ("X shall ...") is not an object: drop it.
+        ontology_json, objects_cleaned = clean_action_objects(ontology_json)
         return {
             "batch_id": batch_id,
             "chunk_id": row["chunk_id"],
@@ -166,6 +168,7 @@ def generate_partial_ontologies(
             "prompt_tokens": response.prompt_tokens,
             "output_tokens": response.output_tokens,
             "recital_rules_dropped": recitals_dropped,
+            "sentence_objects_dropped": objects_cleaned,
         }
 
     rows = [row for _, row in chunks.iterrows()]

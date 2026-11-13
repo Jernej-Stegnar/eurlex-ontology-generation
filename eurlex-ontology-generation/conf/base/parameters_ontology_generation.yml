@@ -64,7 +64,7 @@ ontology_generation:
 
     ACTIONS. "action" is one canonical verb from: {actions}. Use "other" only if none fits. Always also give "action_label": the action as worded in the text, snake_case verb plus object.
 
-    OBJECT. "asset" is the short class name of what the action applies to (it links the rule to a class). "action_object" is the same thing copied word for word from the text WITH all its qualifiers: not "vehicles" but "vehicles registered before 1 January 2010 with a maximum mass above 3.5 tonnes"; not "reports" but "annual reports on the use of the funds received under the programme". Never shorten action_object to the class name.
+    OBJECT. "asset" is the short class name of what the action applies to (it links the rule to a class). "action_object" is the same thing copied word for word from the text WITH all its qualifiers: not "vehicles" but "vehicles registered before 1 January 2010 with a maximum mass above 3.5 tonnes"; not "reports" but "annual reports on the use of the funds received under the programme". Never shorten action_object to the class name. action_object is a NOUN PHRASE, never a sentence: no "shall", "must" or other verb of the provision, no subject in front of it ("the Member State shall notify the measures" -> "the measures"). Conditions (where, unless, subject to, for the purpose of) go into constraints, not into action_object.
 
     CONSTRAINTS. Each constraint is {{left_operand, operator, right_operand, unit}}:
     - left_operand from: {left_operands}

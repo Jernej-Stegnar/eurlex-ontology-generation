@@ -13,6 +13,7 @@ Every change is recorded so the revision report can show what code fixed.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from .entity_linking import Gazetteer, detect_kind, load_gazetteer
@@ -26,6 +27,37 @@ PLACEHOLDER_NAMES = {"targetparty", "responsibleparty", "party", "unknownparty",
 
 def _dicts(value: Any) -> list[dict]:
     return [i for i in value if isinstance(i, dict)] if isinstance(value, list) else []
+
+
+_MODAL = re.compile(r"\b(shall|must)\b", re.IGNORECASE)
+
+
+def is_sentence_object(text: Any) -> bool:
+    """True when an action_object holds a copied provision ("X shall ...") instead of a noun phrase."""
+    return bool(_MODAL.search(str(text or "")))
+
+
+def clean_action_objects(onto: Any) -> tuple[Any, int]:
+    """Remove action_object values that are copied sentences (they contain "shall"/"must").
+
+    The rule then falls back to the object derived from its action_label during
+    normalization. Returns the ontology (a new dict when anything changed) and the count.
+    """
+    if not isinstance(onto, dict) or not isinstance(onto.get("rights_model"), dict):
+        return onto, 0
+    rm, cleaned = {}, 0
+    for kind, rules in onto["rights_model"].items():
+        if not isinstance(rules, list):
+            rm[kind] = rules
+            continue
+        out = []
+        for r in rules:
+            if isinstance(r, dict) and is_sentence_object(r.get("action_object")):
+                r = {k: v for k, v in r.items() if k != "action_object"}
+                cleaned += 1
+            out.append(r)
+        rm[kind] = out
+    return ({**onto, "rights_model": rm}, cleaned) if cleaned else (onto, 0)
 
 
 def drop_recital_rules(onto: Any) -> tuple[Any, int]:
@@ -192,6 +224,9 @@ def normalize_chunk_ontology(onto: dict, vocab: Vocabulary | None = None,
             # The model's own action_object is the object as worded in the text, with its
             # qualifiers; keep it. Only when it gave none, use the object split off the label.
             model_object = str(rule.get("action_object") or "").strip()
+            if is_sentence_object(model_object):
+                note("action_object_sentence_dropped", model_object[:80])
+                model_object = ""
             new_rule = {"action": norm["action"], "action_label": norm["action_label"],
                         "action_object": model_object or norm["action_object"],
                         "action_controlled": norm["controlled"],
