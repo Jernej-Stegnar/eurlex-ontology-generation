@@ -1,0 +1,34 @@
+# Extraction agent (T9 baseline 3): replaces generate -> review -> revise for a
+# batch when scripts/run_ontology_batches.py runs with --mode agent. It uses the
+# generation step's system prompt, chunk prompt and vocabulary (wired in the
+# pipeline), so it starts from exactly what the single-prompt pipeline knows.
+ontology_agent:
+  batch_id: 0
+  batch_group_size: 1000
+
+  model: deepseek-v4-pro
+  # Tool calling needs an openai_compatible backend. Defined inline (not via
+  # globals) so that envs whose globals lack this profile still load.
+  llm_backend:
+    provider: openai_compatible
+    base_url: https://api.deepseek.com
+    api_key_env: DEEPSEEK_API_KEY
+    extra_body:
+      thinking: {type: disabled}     # named tool_choice (forced submit) needs thinking off
+    timeout_s: 300
+    max_retries: 4
+
+  temperature: 0.1                   # as generation
+  seed: 42
+  max_steps: 12                      # LLM turns per chunk; the last 2 may only submit
+  max_tokens: 8192                   # output cap per turn
+  max_submits: 3                     # after that the last schema-valid submission is kept
+
+  # Skills and lessons: read-only during runs, written only by the learning phase.
+  skills_dir: agent_skills
+  memory_dir: data/04_feature/agent_memory
+  traces_dir: data/04_feature/agent_traces
+
+  candidates_directory: data/04_feature/ontology_candidates
+  revisions_directory: data/04_feature/ontology_revisions
+  reviews_directory: data/04_feature/ontology_reviews

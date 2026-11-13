@@ -354,6 +354,42 @@ def validate_revision_output(
     return True
 
 
+# Agent mode: one pipeline run replaces generate -> review -> revise. It must
+# leave a candidate, a revision and a review row for every chunk; chunks the
+# agent did not finish cleanly are logged like any other unclean chunk.
+AGENT_OK = ("accepted", "accepted_with_warnings")
+
+
+def check_agent_output(batch_id: int, expected_count: int) -> bool:
+    cand = _batch_rows("data/04_feature/ontology_candidates", batch_id)
+    revs = _batch_rows("data/04_feature/ontology_revisions", batch_id)
+    revw = _batch_rows("data/04_feature/ontology_reviews", batch_id)
+    counts = (len(cand), len(revs), len(revw[revw["round"] == 1]) if len(revw) else 0)
+    if counts != (expected_count,) * 3:
+        print(f"[batch {batch_id}] agent output incomplete: candidates/revisions/reviews = {counts}, "
+              f"expected {expected_count}", flush=True)
+        return False
+    rows = []
+    for _, r in cand.iterrows():
+        status = str(_value(r, "agent_status"))
+        if status not in AGENT_OK or _value(r, "done_reason") == "length":
+            rows.append({"batch_id": batch_id, "round": 1, "step": "agent", "chunk_id": r["chunk_id"],
+                         "CELEX": r["CELEX"], "status": status, "done_reason": _value(r, "done_reason"),
+                         "output_tokens": _value(r, "output_tokens"), "detail": _value(r, "detail")})
+    log_chunk_issues(rows)
+    statuses = cand["agent_status"].value_counts().to_dict()
+    print(f"[batch {batch_id}] agent: {statuses}; tokens in {int(cand['prompt_tokens'].sum())} "
+          f"(cached {int(cand['cache_hit_tokens'].sum())}), out {int(cand['output_tokens'].sum())}", flush=True)
+    return True
+
+
+def run_agent_batch(batch_id: int, expected_count: int) -> bool:
+    if run_pipeline("ontology_agent", "ontology_agent", batch_id) != 0:
+        print(f"Agent pipeline failed for batch {batch_id}.")
+        return False
+    return check_agent_output(batch_id, expected_count)
+
+
 # Execute the complete ontology-processing pipeline for one batch:
 #   generate -> review (round 0) -> revise (round 1) -> review (round 1)
 #   -> [revise (round 2) -> review (round 2)] ... up to `review_rounds`.
@@ -507,6 +543,14 @@ def parse_arguments() -> argparse.Namespace:
              "reviews on disk; later review rounds are discarded and redone. Completed "
              "batches in the range are processed again.",
     )
+    parser.add_argument(
+        "--mode",
+        choices=["pipeline", "agent"],
+        default="pipeline",
+        help="pipeline: generate -> review -> revise (default). agent: the extraction agent "
+             "(pipeline ontology_agent) replaces all three; --review-rounds and --from-round "
+             "do not apply.",
+    )
 
     return parser.parse_args()
 
@@ -520,6 +564,8 @@ def main() -> None:
         raise ValueError(
             "--max-batches and --parallel must be greater than zero."
         )
+    if args.mode == "agent" and args.from_round:
+        raise ValueError("--from-round does not apply to --mode agent (it has no review rounds).")
 
     manifest = load_manifest()
     manifest = recover_interrupted_batches(manifest)
@@ -543,12 +589,15 @@ def main() -> None:
             batch_id, expected_count = claimed
 
             try:
-                ok = run_batch(
-                    batch_id=batch_id,
-                    expected_count=expected_count,
-                    review_rounds=args.review_rounds,
-                    from_round=args.from_round,
-                )
+                if args.mode == "agent":
+                    ok = run_agent_batch(batch_id=batch_id, expected_count=expected_count)
+                else:
+                    ok = run_batch(
+                        batch_id=batch_id,
+                        expected_count=expected_count,
+                        review_rounds=args.review_rounds,
+                        from_round=args.from_round,
+                    )
             except Exception as exc:
                 print(f"[batch {batch_id}] exception: {exc}", flush=True)
                 ok = False
