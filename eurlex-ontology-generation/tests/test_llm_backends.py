@@ -19,6 +19,7 @@ class _Handler(BaseHTTPRequestHandler):
     calls: list = []
     fail_next: list = []          # status codes to return before succeeding
     reject_json_schema = False
+    submit_arguments = '{"rules": []}'
 
     def log_message(self, *args):  # silence
         pass
@@ -36,6 +37,19 @@ class _Handler(BaseHTTPRequestHandler):
         self.calls.append({"path": self.path, "body": body, "headers": dict(self.headers)})
         if self.fail_next:
             return self._send(self.fail_next.pop(0), {"error": "try again"})
+        if self.path == "/v1/chat/completions" and body.get("tools"):
+            # first turn: call read_chunk; once a tool result is in the history: submit
+            if any(m.get("role") == "tool" for m in body["messages"]):
+                call = {"id": "call_2", "type": "function",
+                        "function": {"name": "submit", "arguments": self.submit_arguments}}
+            else:
+                call = {"id": "call_1", "type": "function",
+                        "function": {"name": "read_chunk", "arguments": '{"chunk_id": "X_1"}'}}
+            return self._send(200, {"choices": [{"message": {"role": "assistant", "content": None,
+                                                             "tool_calls": [call]},
+                                                 "finish_reason": "tool_calls"}],
+                                    "usage": {"prompt_tokens": 20, "completion_tokens": 4,
+                                              "prompt_cache_hit_tokens": 12, "prompt_cache_miss_tokens": 8}})
         if self.path == "/v1/chat/completions":
             rf = body.get("response_format", {})
             if rf.get("type") == "json_schema" and self.reject_json_schema:
@@ -56,6 +70,7 @@ class _Handler(BaseHTTPRequestHandler):
 @pytest.fixture()
 def server(monkeypatch):
     _Handler.calls, _Handler.fail_next, _Handler.reject_json_schema = [], [], False
+    _Handler.submit_arguments = '{"rules": []}'
     llm_client._FORMAT_DOWNGRADE.clear()
     monkeypatch.setattr(llm_client.time, "sleep", lambda s: None)
     httpd = HTTPServer(("127.0.0.1", 0), _Handler)
@@ -153,3 +168,69 @@ def test_inline_refs_resolves_nested_models():
     schema = inline_refs(build_ontology_model().model_json_schema())
     text = json.dumps(schema)
     assert "$ref" not in text and "$defs" not in text and "EUInstitution" in text
+
+
+# ------------------------------------------------- llm_chat_messages (agent)
+TOOLS = [
+    {"type": "function", "function": {"name": "read_chunk", "description": "read",
+                                      "parameters": {"type": "object", "properties": {"chunk_id": {"type": "string"}}}}},
+    {"type": "function", "function": {"name": "submit", "description": "submit",
+                                      "parameters": {"type": "object", "properties": {"rules": {"type": "array"}}}}},
+]
+
+
+def test_chat_messages_tool_round_trip(server, monkeypatch):
+    from eurlex_ontology_generation.utils.llm_client import llm_chat_messages
+
+    monkeypatch.setenv("TEST_KEY", "sk-test")
+    backend = {"provider": "openai_compatible", "base_url": f"{server}/v1", "api_key_env": "TEST_KEY",
+               "extra_body": {"thinking": {"type": "disabled"}}}
+    messages = [{"role": "system", "content": "sys"}, {"role": "user", "content": "go"}]
+
+    t1 = llm_chat_messages(backend, "m", messages, tools=TOOLS, temperature=0.1, seed=42, max_tokens=99)
+    assert t1.done_reason == "tool_calls" and [c.name for c in t1.tool_calls] == ["read_chunk"]
+    assert t1.tool_calls[0].args == {"chunk_id": "X_1"} and t1.tool_calls[0].parse_error is None
+    assert (t1.prompt_tokens, t1.output_tokens, t1.cache_hit_tokens) == (20, 4, 12)
+    assert t1.message == {"role": "assistant", "content": "", "tool_calls": t1.message["tool_calls"]}
+    body = _Handler.calls[0]["body"]
+    assert body["tools"] == TOOLS and body["tool_choice"] == "auto"
+    assert body["seed"] == 42 and body["max_tokens"] == 99 and body["thinking"] == {"type": "disabled"}
+    assert "response_format" not in body
+
+    messages += [t1.message, {"role": "tool", "tool_call_id": t1.tool_calls[0].id, "content": "chunk text"}]
+    t2 = llm_chat_messages(backend, "m", messages, tools=TOOLS,
+                           tool_choice={"type": "function", "function": {"name": "submit"}})
+    assert [c.name for c in t2.tool_calls] == ["submit"] and t2.tool_calls[0].args == {"rules": []}
+    sent = _Handler.calls[1]["body"]
+    assert sent["messages"][2]["tool_calls"][0]["id"] == "call_1"        # history sent back intact
+    assert sent["tool_choice"]["function"]["name"] == "submit"
+
+
+def test_chat_messages_bad_arguments_are_reported_not_raised(server):
+    from eurlex_ontology_generation.utils.llm_client import llm_chat_messages
+
+    _Handler.submit_arguments = '{"rules": [ broken'
+    backend = {"provider": "openai_compatible", "base_url": f"{server}/v1"}
+    msgs = [{"role": "user", "content": "go"}, {"role": "assistant", "content": "", "tool_calls": []},
+            {"role": "tool", "tool_call_id": "call_1", "content": "x"}]
+    turn = llm_chat_messages(backend, "m", msgs, tools=TOOLS)
+    call = turn.tool_calls[0]
+    assert call.args is None and "invalid JSON" in call.parse_error and call.arguments.startswith('{"rules"')
+
+
+def test_chat_messages_without_tools_and_retries(server):
+    from eurlex_ontology_generation.utils.llm_client import llm_chat_messages
+
+    _Handler.fail_next = [429]
+    backend = {"provider": "openai_compatible", "base_url": f"{server}/v1", "max_retries": 2}
+    turn = llm_chat_messages(backend, "m", [{"role": "user", "content": "hi"}])
+    assert turn.tool_calls == [] and turn.content and turn.cache_hit_tokens == 0
+    assert len(_Handler.calls) == 2 and "tools" not in _Handler.calls[-1]["body"]
+
+
+def test_chat_messages_other_providers_not_supported():
+    from eurlex_ontology_generation.utils.llm_client import llm_chat_messages
+
+    for backend in ({}, {"provider": "ollama"}, {"provider": "anthropic"}):
+        with pytest.raises(NotImplementedError):
+            llm_chat_messages(backend, "m", [{"role": "user", "content": "x"}])

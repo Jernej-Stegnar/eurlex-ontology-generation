@@ -219,6 +219,115 @@ def _anthropic_chat(backend, model, system_prompt, user_prompt, temperature, sch
     )
 
 
+# ------------------------------------------------- multi-turn tool calling
+@dataclass
+class ToolCall:
+    id: str
+    name: str
+    arguments: str                  # raw JSON string as sent by the model
+    args: dict | None               # parsed arguments, None if not a JSON object
+    parse_error: str | None = None
+
+
+@dataclass
+class ChatTurn:
+    message: dict                   # assistant message, ready to append to `messages`
+    content: str
+    tool_calls: list[ToolCall]
+    done_reason: str                # "stop", "tool_calls", "length", ...
+    prompt_tokens: int
+    output_tokens: int
+    cache_hit_tokens: int           # prompt tokens served from the provider's cache (0 if not reported)
+
+
+def llm_chat_messages(
+    backend: dict,
+    model: str,
+    messages: list[dict],
+    *,
+    tools: list[dict] | None = None,
+    tool_choice: str | dict = "auto",
+    temperature: float = 0.0,
+    seed: int | None = None,
+    max_tokens: int | None = None,
+) -> ChatTurn:
+    """One assistant turn over a full message history, with optional tools.
+
+    `messages` and `tools` use the OpenAI chat format ({"role": "tool",
+    "tool_call_id": ..., "content": ...} for tool results; tools as
+    {"type": "function", "function": {...}}). The returned `message` can be
+    appended to `messages` as is. Only openai_compatible backends support it
+    (DeepSeek, OpenRouter, vLLM, ...); retries as in llm_chat.
+    """
+    backend = backend or {}
+    provider = backend.get("provider", "ollama")
+    if provider != "openai_compatible":
+        raise NotImplementedError(f"llm_chat_messages supports openai_compatible only, not {provider!r}")
+    return _with_retries(lambda: _openai_chat_messages(backend, model, messages, tools, tool_choice,
+                                                       temperature, seed, max_tokens),
+                         int(backend.get("max_retries", 3)))
+
+
+def _openai_chat_messages(backend, model, messages, tools, tool_choice, temperature, seed,
+                          max_tokens) -> ChatTurn:
+    base_url = (backend.get("base_url") or "https://api.openai.com/v1").rstrip("/")
+    headers = {"Content-Type": "application/json", **(backend.get("extra_headers") or {})}
+    key = _api_key(backend)
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+    body: dict[str, Any] = {"model": model, "messages": messages, "temperature": temperature,
+                            **(backend.get("extra_body") or {})}
+    if tools:
+        body["tools"] = tools
+        body["tool_choice"] = tool_choice
+    if max_tokens:
+        body["max_tokens"] = max_tokens
+    if seed is not None:
+        body["seed"] = seed
+    data = _post_json(f"{base_url}/chat/completions", body, headers, float(backend.get("timeout_s", 120)))
+
+    choice = (data.get("choices") or [{}])[0]
+    raw = choice.get("message") or {}
+    calls = []
+    for tc in raw.get("tool_calls") or []:
+        fn = tc.get("function") or {}
+        arguments = fn.get("arguments") or ""
+        args, err = None, None
+        try:
+            parsed = json.loads(arguments) if arguments else {}
+            if isinstance(parsed, dict):
+                args = parsed
+            else:
+                err = "arguments are not a JSON object"
+        except json.JSONDecodeError as exc:
+            err = f"invalid JSON arguments: {exc}"
+        calls.append(ToolCall(id=tc.get("id", ""), name=fn.get("name", ""), arguments=arguments,
+                              args=args, parse_error=err))
+
+    # Keep only the fields a provider accepts back in the history; DeepSeek
+    # requires reasoning_content to be returned within a tool-calling turn
+    # when thinking is on.
+    message: dict[str, Any] = {"role": "assistant", "content": raw.get("content") or ""}
+    if raw.get("tool_calls"):
+        message["tool_calls"] = raw["tool_calls"]
+    if raw.get("reasoning_content"):
+        message["reasoning_content"] = raw["reasoning_content"]
+
+    usage = data.get("usage") or {}
+    cached = usage.get("prompt_cache_hit_tokens")
+    if cached is None:
+        cached = (usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
+    return ChatTurn(
+        message=message,
+        content=message["content"],
+        tool_calls=calls,
+        done_reason=choice.get("finish_reason") or "unknown",
+        prompt_tokens=usage.get("prompt_tokens") or 0,
+        output_tokens=usage.get("completion_tokens") or 0,
+        cache_hit_tokens=cached,
+    )
+
+
 # --------------------------------------------------------------- embeddings
 def embed_texts(backend: dict | None, model: str, texts: list[str], batch_size: int = 64) -> list[list[float]]:
     """Embeddings from Ollama (default) or an OpenAI-compatible /embeddings endpoint."""
