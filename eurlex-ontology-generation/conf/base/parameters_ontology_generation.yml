@@ -62,6 +62,8 @@ ontology_generation:
 
     ACTIONS. "action" is one canonical verb from: {actions}. Use "other" only if none fits. Always also give "action_label": the action as worded in the text, snake_case verb plus object.
 
+    OBJECT. "asset" is the short class name of what the action applies to (it links the rule to a class). "action_object" is the same thing copied word for word from the text WITH all its qualifiers: not "vehicles" but "vehicles registered before 1 January 2010 with a maximum mass above 3.5 tonnes"; not "reports" but "annual reports on the use of the funds received under the programme". Never shorten action_object to the class name.
+
     CONSTRAINTS. Each constraint is {{left_operand, operator, right_operand, unit}}:
     - left_operand from: {left_operands}
     - operator from: {operators}
@@ -72,7 +74,7 @@ ontology_generation:
     - prerequisite ("subject to", "provided that", "where", "if", "in accordance with", "under the conditions set out in") -> condition;
     - restriction of scope ("only", "solely", "limited to") -> condition;
     - deadlines, dates, periods and amounts -> dateTime / elapsedTime / payAmount;
-    - triggering events ("in the event of", "upon", "before export") -> event.
+    - triggering events ("in the event of", "upon", "on arrival") -> event.
     Copy each right_operand word for word, including article references ("Article 5(3)").
 
     RELATIONSHIPS. "relation" is one of: {relations}. Use the active direction (A funds B, not B funded_by A).
@@ -105,15 +107,15 @@ ontology_generation:
       ],
       "rights_model": {{
         "permissions": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<short class name of what the action applies to>", "action_object": "<what the action applies to, copied word for word from the text with all its qualifiers>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": [{{"left_operand": "<allowed left operand>", "operator": "<allowed operator>", "right_operand": "<value copied word for word from the text>", "unit": "<unit from the text, or empty>"}}]}}
         ],
         "prohibitions": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<short class name of what the action applies to>", "action_object": "<what the action applies to, copied word for word from the text with all its qualifiers>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": []}}
         ],
         "duties": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<short class name of what the action applies to>", "action_object": "<what the action applies to, copied word for word from the text with all its qualifiers>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": []}}
         ]
       }},

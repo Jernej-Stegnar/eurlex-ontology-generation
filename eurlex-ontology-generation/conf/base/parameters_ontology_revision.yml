@@ -51,6 +51,7 @@ ontology_revision:
     {upper_ontology}
     - "kind" is "individual" for one named thing (a country, an institution, a named fund or programme) and "class" for a kind of thing.
     - Never use Permission, Prohibition, Duty, Constraint, Assignee or Target in a class name: express such content as a rule in rights_model.
+    - Every rule keeps "asset" (short class name) and "action_object" (the object copied word for word from the source text with all its qualifiers). Fill in or complete action_object where it is missing or shortened; never cut it down to the class name.
     - Rule "action" is one canonical verb from: {actions} (or "other"); keep the original wording in "action_label".
     - Constraints are {{left_operand, operator, right_operand, unit}} with left_operand from: {left_operands}; operator from: {operators}.
     - Every condition the source sentence attaches to a rule gets its own constraint, copied word for word: purpose -> purpose; exception ("except", "unless") -> condition starting "except "; prerequisite ("subject to", "provided that", "where", "in accordance with") -> condition; scope restriction ("only") -> condition; dates, periods, amounts -> dateTime / elapsedTime / payAmount; triggering events -> event. Add conditions a rule is missing; never drop one.
@@ -100,15 +101,15 @@ ontology_revision:
       ],
       "rights_model": {{
         "permissions": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<short class name of what the action applies to>", "action_object": "<what the action applies to, copied word for word from the text with all its qualifiers>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": [{{"left_operand": "<allowed left operand>", "operator": "<allowed operator>", "right_operand": "<value copied word for word from the text>", "unit": "<unit from the text, or empty>"}}]}}
         ],
         "prohibitions": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<short class name of what the action applies to>", "action_object": "<what the action applies to, copied word for word from the text with all its qualifiers>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": []}}
         ],
         "duties": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<short class name of what the action applies to>", "action_object": "<what the action applies to, copied word for word from the text with all its qualifiers>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": []}}
         ]
       }},

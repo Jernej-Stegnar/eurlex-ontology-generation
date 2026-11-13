@@ -44,3 +44,18 @@ def test_generation_node_applies_flag(monkeypatch):
     off = gen.generate_partial_ontologies(*args, drop_recitals=False).iloc[0]
     assert on.recital_rules_dropped == 2 and len(json.loads(on.ontology)["rights_model"]["duties"]) == 1
     assert off.recital_rules_dropped == 0 and len(json.loads(off.ontology)["rights_model"]["duties"]) == 2
+
+
+def test_normalizer_keeps_model_action_object():
+    from eurlex_ontology_generation.utils.ontology_normalize import normalize_chunk_ontology
+    onto = {"classes": [{"name": "Vehicle", "type": "Asset", "is_a": "Resource", "kind": "class"},
+                        {"name": "MemberState", "type": "Party", "is_a": "PublicAuthority", "kind": "class"}],
+            "rights_model": {"duties": [
+                {"action": "register", "action_label": "register_vehicles", "party": "MemberState", "asset": "Vehicle",
+                 "action_object": "vehicles registered before 1 January 2010 with a maximum mass above 3.5 tonnes"},
+                {"action": "register", "action_label": "register_vehicles", "party": "MemberState", "asset": "Vehicle"}]}}
+    out, _ = normalize_chunk_ontology(onto)
+    kept, derived = out["rights_model"]["duties"]
+    assert kept["action_object"].startswith("vehicles registered before 1 January 2010")
+    from eurlex_ontology_generation.utils.vocabulary import load_vocabulary
+    assert derived["action_object"] == load_vocabulary().normalize_action("register", "register_vehicles")["action_object"]

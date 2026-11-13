@@ -189,8 +189,12 @@ def normalize_chunk_ontology(onto: dict, vocab: Vocabulary | None = None,
                 if "name" in c and "left_operand" not in c:
                     note("constraint_structured", f"{c.get('name')} -> {sc['left_operand']} {sc['operator']}")
                 constraints.append(sc)
+            # The model's own action_object is the object as worded in the text, with its
+            # qualifiers; keep it. Only when it gave none, use the object split off the label.
+            model_object = str(rule.get("action_object") or "").strip()
             new_rule = {"action": norm["action"], "action_label": norm["action_label"],
-                        "action_object": norm["action_object"], "action_controlled": norm["controlled"],
+                        "action_object": model_object or norm["action_object"],
+                        "action_controlled": norm["controlled"],
                         "party": party, "asset": asset, "constraints": constraints}
             if rule.get("assigner"):
                 new_rule["assigner"] = rule["assigner"]
