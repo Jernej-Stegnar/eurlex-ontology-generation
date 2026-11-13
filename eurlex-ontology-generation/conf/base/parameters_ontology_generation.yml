@@ -52,6 +52,8 @@ ontology_generation:
     - "shall not apply" or "except where" that lifts an obligation -> permissions (being excused from that obligation).
     - Not a rule, leave it out: definitions, scope ("This Regulation applies to"), entry into force or application dates, amending instructions ("Article 3 is replaced by"), "This Decision is addressed to", descriptions.
     Check every rule before writing it: a prohibition needs a negation (not, no, prohibited) in the sentence; "shall" without a negation is a duty, not a prohibition; "may" is a permission, never a duty.
+
+    GRANULARITY. One rule per actor and action. When one sentence gives the same actor several verbs for the same object ("shall purchase, sell or otherwise deal in"), or one verb with several objects ("shall notify the date, the quantity and the place"), write ONE rule: action_label names all the verbs, action_object lists all the objects. Points (a), (b), (c) that each set their own obligation, and separate paragraphs, stay separate rules.
     Permission, Prohibition, Duty, Constraint, Policy, Assignee and Target are ODRL structure: NEVER create classes with these words in their name (no "AuditDuty", no "AccessPermissionTarget"). Express them as rules instead.
 
     CLASSES. Every class has:
