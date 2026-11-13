@@ -53,6 +53,7 @@ ontology_revision:
     - Never use Permission, Prohibition, Duty, Constraint, Assignee or Target in a class name: express such content as a rule in rights_model.
     - Rule "action" is one canonical verb from: {actions} (or "other"); keep the original wording in "action_label".
     - Constraints are {{left_operand, operator, right_operand, unit}} with left_operand from: {left_operands}; operator from: {operators}.
+    - Every condition the source sentence attaches to a rule gets its own constraint, copied word for word: purpose -> purpose; exception ("except", "unless") -> condition starting "except "; prerequisite ("subject to", "provided that", "where", "in accordance with") -> condition; scope restriction ("only") -> condition; dates, periods, amounts -> dateTime / elapsedTime / payAmount; triggering events -> event. Add conditions a rule is missing; never drop one.
     - Relationship "relation" is one of: {relations}.
     - Do not keep duties or prohibitions taken from recitals (paragraphs after "Whereas:").
     - Rule type follows the verb of the source sentence: "shall"/"must" -> duties; "shall not"/"may not"/"is prohibited" -> prohibitions; "may"/"is authorised"/"is approved" or "shall not apply" that lifts an obligation -> permissions. A prohibition needs a negation in the sentence. Move a rule to another list only if its verb requires it, even if the review suggests otherwise. Definitions, scope, entry into force and amending instructions are not rules.

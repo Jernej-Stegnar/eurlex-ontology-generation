@@ -66,6 +66,14 @@ ontology_generation:
     - left_operand from: {left_operands}
     - operator from: {operators}
     - right_operand copied from the text (dates as YYYY-MM-DD; amounts as digits with the currency in unit).
+    Give EVERY condition the sentence attaches to the rule its own constraint; do not keep only the first one:
+    - purpose ("for the purpose of", "in order to", "to ensure that") -> purpose;
+    - exception ("except", "unless", "with the exception of", "without prejudice to") -> condition, right_operand starting "except ";
+    - prerequisite ("subject to", "provided that", "where", "if", "in accordance with", "under the conditions set out in") -> condition;
+    - restriction of scope ("only", "solely", "limited to") -> condition;
+    - deadlines, dates, periods and amounts -> dateTime / elapsedTime / payAmount;
+    - triggering events ("in the event of", "upon", "before export") -> event.
+    Copy each right_operand word for word, including article references ("Article 5(3)").
 
     RELATIONSHIPS. "relation" is one of: {relations}. Use the active direction (A funds B, not B funded_by A).
 
