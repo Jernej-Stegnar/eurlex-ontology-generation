@@ -43,6 +43,14 @@ ontology_generation:
     - prohibitions: actions a party MUST NOT perform.
     - duties: actions a party MUST perform.
     Each rule has an action, a party (who holds the permission/prohibition/duty), optionally an assigner (who grants or imposes it), an asset (what the action applies to) and constraints.
+
+    RULE TYPE. Choose the list from the verb of the sentence, never from its topic:
+    - "shall", "must", "is required to", "shall ensure", "shall notify", "shall lay down" -> duties.
+    - "shall not", "must not", "may not", "is prohibited", "no ... shall" -> prohibitions.
+    - "may", "is authorised to", "is allowed to", "is approved", "by way of derogation ... may" -> permissions.
+    - "shall not apply" or "except where" that lifts an obligation -> permissions (being excused from that obligation).
+    - Not a rule, leave it out: definitions, scope ("This Regulation applies to"), entry into force or application dates, amending instructions ("Article 3 is replaced by"), "This Decision is addressed to", descriptions.
+    Check every rule before writing it: a prohibition needs a negation (not, no, prohibited) in the sentence; "shall" without a negation is a duty, not a prohibition; "may" is a permission, never a duty.
     Permission, Prohibition, Duty, Constraint, Policy, Assignee and Target are ODRL structure: NEVER create classes with these words in their name (no "AuditDuty", no "AccessPermissionTarget"). Express them as rules instead.
 
     CLASSES. Every class has:
@@ -88,15 +96,15 @@ ontology_generation:
       ],
       "rights_model": {{
         "permissions": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<what the action applies to>", "provision": "<article, annex or recital>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": [{{"left_operand": "<allowed left operand>", "operator": "<allowed operator>", "right_operand": "<value copied word for word from the text>", "unit": "<unit from the text, or empty>"}}]}}
         ],
         "prohibitions": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<article, annex or recital>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": []}}
         ],
         "duties": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<article, annex or recital>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": []}}
         ]
       }},

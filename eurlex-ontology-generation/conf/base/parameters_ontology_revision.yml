@@ -54,6 +54,7 @@ ontology_revision:
     - Constraints are {{left_operand, operator, right_operand, unit}} with left_operand from: {left_operands}; operator from: {operators}.
     - Relationship "relation" is one of: {relations}.
     - Do not keep duties or prohibitions taken from recitals (paragraphs after "Whereas:").
+    - Rule type follows the verb of the source sentence: "shall"/"must" -> duties; "shall not"/"may not"/"is prohibited" -> prohibitions; "may"/"is authorised"/"is approved" or "shall not apply" that lifts an obligation -> permissions. A prohibition needs a negation in the sentence. Move a rule to another list only if its verb requires it, even if the review suggests otherwise. Definitions, scope, entry into force and amending instructions are not rules.
     Invalid values are replaced in code after you answer, so choose the closest valid value rather than inventing one.
     6. PRESERVE VALID CONTENT: Keep every class, relationship, and instance from the Candidate Ontology that was NOT flagged as wrong. Do not discard correct information.
     7. SCHEMA CONSTRAINT: The corrected ontology output MUST contain EXACTLY these top-level keys, nothing more and nothing less: "ontology_name", "description", "odrl_alignment", "classes", "relationships", "rights_model", "legal_patterns", "example_instances". NEVER include review-related fields such as "approved", "revision_required", "strengths", "weaknesses", "missing_concepts", "overall_score" in the output ontology.
@@ -97,15 +98,15 @@ ontology_revision:
       ],
       "rights_model": {{
         "permissions": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<what the action applies to>", "provision": "<article, annex or recital>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": [{{"left_operand": "<allowed left operand>", "operator": "<allowed operator>", "right_operand": "<value copied word for word from the text>", "unit": "<unit from the text, or empty>"}}]}}
         ],
         "prohibitions": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<article, annex or recital>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": []}}
         ],
         "duties": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<article, annex or recital>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": []}}
         ]
       }},
