@@ -9,6 +9,7 @@ ontology_revision:
   model: gemma3:4b  
   temperature: 0.0
   seed: 42           # Fixed sampling seed, so reruns with the same settings are comparable
+  drop_recital_rules: true  # Drop rules tagged provision "recital" after every revision (T4 fix 3)
   json_mode: true
 
   # Execution backend and parallelism settings for LLM inference

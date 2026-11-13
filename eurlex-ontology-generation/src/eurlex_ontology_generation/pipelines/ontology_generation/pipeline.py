@@ -36,6 +36,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                     "params:ontology_generation.vocabulary_path",
                     "params:ontology_generation.num_ctx",
                     "params:ontology_generation.seed",
+                    "params:ontology_generation.drop_recital_rules",
                 ],
                 outputs="ontology_candidates_batch",
                 name="generate_partial_ontologies_node",

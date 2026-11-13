@@ -5,6 +5,7 @@ import pandas as pd
 from pathlib import Path
 
 from ...utils.llm_client import llm_chat, run_parallel
+from ...utils.ontology_normalize import drop_recital_rules
 from ...utils.ontology_schema import build_ontology_model
 from ...utils.persist import append_dedup_csv
 from ...utils.vocabulary import render_prompt
@@ -127,6 +128,7 @@ def generate_partial_ontologies(
     vocabulary_path: str | None = None,
     num_ctx: int | None = None,
     seed: int | None = None,
+    drop_recitals: bool = False,
 ) -> pd.DataFrame:
 
     # The system prompt carries the controlled vocabulary; render it once.
@@ -148,6 +150,11 @@ def generate_partial_ontologies(
             num_ctx=num_ctx,
         )
         ontology_json = extract_json(response.content)
+        # Rules the model itself tags as coming from a recital are not binding: drop them
+        # before review, so neither the reviewer nor the merge sees them.
+        recitals_dropped = 0
+        if drop_recitals:
+            ontology_json, recitals_dropped = drop_recital_rules(ontology_json)
         return {
             "batch_id": batch_id,
             "chunk_id": row["chunk_id"],
@@ -158,6 +165,7 @@ def generate_partial_ontologies(
             "done_reason": response.done_reason,
             "prompt_tokens": response.prompt_tokens,
             "output_tokens": response.output_tokens,
+            "recital_rules_dropped": recitals_dropped,
         }
 
     rows = [row for _, row in chunks.iterrows()]

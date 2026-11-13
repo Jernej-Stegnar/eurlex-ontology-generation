@@ -28,6 +28,26 @@ def _dicts(value: Any) -> list[dict]:
     return [i for i in value if isinstance(i, dict)] if isinstance(value, list) else []
 
 
+def drop_recital_rules(onto: Any) -> tuple[Any, int]:
+    """Remove rules whose provision is "recital": recitals explain an act, they do not bind.
+
+    Returns the ontology (a new dict when anything was removed) and the number of rules removed.
+    Non-dict input and rules without a provision are left as they are.
+    """
+    if not isinstance(onto, dict) or not isinstance(onto.get("rights_model"), dict):
+        return onto, 0
+    rm, dropped = {}, 0
+    for kind, rules in onto["rights_model"].items():
+        if not isinstance(rules, list):
+            rm[kind] = rules
+            continue
+        kept = [r for r in rules
+                if not (isinstance(r, dict) and str(r.get("provision") or "").strip().lower() == "recital")]
+        dropped += len(rules) - len(kept)
+        rm[kind] = kept
+    return ({**onto, "rights_model": rm}, dropped) if dropped else (onto, 0)
+
+
 def is_placeholder_name(name: Any) -> bool:
     return not isinstance(name, str) or "".join(split_identifier(name)) in PLACEHOLDER_NAMES
 
