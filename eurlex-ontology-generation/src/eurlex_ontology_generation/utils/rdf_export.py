@@ -9,7 +9,8 @@ Layout of the graph
 TBox
   eo:Party ≡ odrl:Party, eo:Asset ≡ odrl:Asset, eo:LegalExtension; pairwise disjoint.
   Upper classes (eo:Fund, eo:Country, ...) are subclasses of their core class.
-  Domain classes (kind=class) are owl:Class, rdfs:subClassOf their upper class.
+  Domain classes (kind=class) are owl:Class, rdfs:subClassOf their upper class, and
+  rdfs:subClassOf the domain classes listed in `broader` (narrower -> broader, T13).
 ABox
   Individuals (kind=individual) are owl:NamedIndividual typed with their upper
   class; Wikidata IDs as owl:sameAs, EU Vocabularies IRIs as skos:exactMatch
@@ -238,6 +239,18 @@ def export_rdf(refined: dict, base_iri: str = DEFAULT_BASE_IRI,
         if i.get("member_state") is not None:
             g.add((node, eo.memberState, Literal(bool(i["member_state"]))))
         stats["individuals"] += 1
+
+    # domain hierarchy: "narrower is a kind of broader" (refinement has checked type and cycles);
+    # added after all entities have their IRI, so the links never change IRI assignment
+    class_names = {c["name"] for c in refined.get("classes", [])}
+    stats["class_links"] = 0
+    for c in refined.get("classes", []):
+        for b in c.get("broader") or []:
+            if b in class_names and b != c["name"]:
+                g.add((iri_of[c["name"]], RDFS.subClassOf, iri_of[b]))
+                stats["class_links"] += 1
+            else:
+                stats["skipped"].append(f"broader {c['name']} -> {b}: not a domain class")
 
     for e in refined.get("classes", []) + refined.get("individuals", []):
         rel = e.get("related_individual")

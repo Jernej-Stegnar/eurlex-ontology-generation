@@ -163,6 +163,8 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
                                          "type_votes": Counter(), "is_a_votes": Counter(),
                                          "kind_votes": Counter(), "variants": [], "sources": set()})
         e["variants"].append(cls["name"])
+        for b in cls.get("broader") or []:
+            e.setdefault("broader", set()).add(resolve(b))   # None (removed, composite) is dropped later
         e["sources"].update(cls.get("sources") or [])
         sup = _support(cls)
         e["support"] = _add_support(e["support"], sup)
@@ -228,6 +230,8 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
                 t["kind"] = d["kind"]
             t["type_source"], t["kind_confidence"] = "curated", "high"
             changes["curated_typing"] += 1
+
+    hierarchy = class_hierarchy(entities, typed, changes, log)
 
     # ---------------------------------------------------- 6: rules
     rules: dict[str, dict[tuple, dict]] = {k: {} for k in RULE_KINDS}
@@ -333,6 +337,8 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
                 record[k] = t[k]
         if len(e["variants"]) > 1:
             record["merged_from"] = sorted(set(e["variants"]))
+        if hierarchy.get(name):
+            record["broader"] = hierarchy[name]
         if t["kind"] == "individual":
             record["instance_of"] = record.pop("is_a")
             individuals.append(record)
@@ -418,6 +424,60 @@ def refine_ontology(merged: dict, wikidata: dict | None = None,
                    **{k: len(v) for k, v in rights_model.items()}},
     }
     return refined, report
+
+
+def class_hierarchy(entities: dict[str, dict], typed: dict[str, dict],
+                    changes: Counter, log: dict[str, list]) -> dict[str, list[str]]:
+    """Narrower -> broader class links (`broader`, from the merge's pair judge), checked:
+    both ends must be classes of the same core type (Party / Asset / Legal_extension are disjoint,
+    so a cross-type link would make the narrower class unsatisfiable) and the link must not be a
+    self-loop (ends merged into one entity). Every link that lies on a cycle is dropped: the
+    verdicts contradict each other (A < B < A), so none of them is trusted. The result does not
+    depend on the order of the input."""
+    up: dict[str, set[str]] = defaultdict(set)
+    for name in sorted(entities):
+        n_none = sum(1 for x in entities[name].get("broader") or () if x is None)
+        if n_none:
+            changes["hierarchy_dropped_removed"] += n_none
+        for b in sorted(x for x in entities[name].get("broader") or () if x is not None):
+            if b == name:
+                reason = "self"
+            elif b not in typed:
+                reason = "undefined"
+            elif "individual" in (typed[name]["kind"], typed[b]["kind"]):
+                reason = "individual"
+            elif typed[name]["type"] != typed[b]["type"]:
+                reason = "type_mismatch"
+            else:
+                up[name].add(b)
+                continue
+            changes[f"hierarchy_dropped_{reason}"] += 1
+            log[f"hierarchy_dropped_{reason}"].append(f"{name} -> {b}")
+
+    def reaches(src: str, dst: str) -> bool:
+        stack, seen = [src], set()
+        while stack:
+            x = stack.pop()
+            if x == dst:
+                return True
+            if x not in seen:
+                seen.add(x)
+                stack.extend(up.get(x, ()))
+        return False
+
+    out: dict[str, list[str]] = {}
+    for name in sorted(up):
+        keep = []
+        for b in sorted(up[name]):
+            if reaches(b, name):           # name -> b -> ... -> name
+                changes["hierarchy_dropped_cycle"] += 1
+                log["hierarchy_dropped_cycle"].append(f"{name} -> {b}")
+            else:
+                keep.append(b)
+        if keep:
+            out[name] = keep
+            changes["hierarchy_link"] += len(keep)
+    return out
 
 
 def check_consistency(onto: dict) -> dict:

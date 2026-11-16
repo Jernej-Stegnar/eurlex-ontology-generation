@@ -9,9 +9,13 @@ enumeration). This step lets an LLM decide, per act, for the pairs that look ali
 2. judging: the LLM sees both names, types, descriptions, a few facts from the chunk graphs
    (relations, rule roles) and the act sentences that mention them, and labels each pair
    SAME / A_BROADER / B_BROADER / PART_OR_ROLE / SIBLING / DIFFERENT;
-3. joining: SAME at or above `min_confidence` joins the two clusters; everything else is kept
-   apart. Every verdict is returned for the provenance report (broader pairs are the input for a
-   later class hierarchy).
+3. joining (`join_same`): SAME at or above `min_confidence` joins the two clusters; everything
+   else is kept apart. Every verdict is returned for the provenance report.
+4. hierarchy (`link_broader`, T13 step 4): A_BROADER / B_BROADER at or above `min_confidence`
+   becomes a link "narrower is a kind of broader" between the two clusters (never a join). Links
+   between clusters that end up joined are dropped. The merge stores them as `broader` on the
+   narrower class; refinement checks them (same core type, no cycles) and export writes
+   rdfs:subClassOf.
 
 Verdicts are cached (one JSON line per pair, keyed by model, prompt version and pair content), so
 a rerun on the same outputs costs nothing and gives the same result.
@@ -40,6 +44,8 @@ FORM_BASES = {"acronym", "word_order", "spelling_number", "defined_term"}
 CONFIDENCE_RANK = {"low": 0, "medium": 1, "high": 2}
 DEFAULTS = {
     "enabled": False,
+    "join_same": True,
+    "link_broader": False,
     "model": "deepseek-v4-pro",
     "llm_backend": None,
     "temperature": 0.0,
@@ -326,6 +332,7 @@ def judge_and_join(entities_with_clusters: pd.DataFrame, revisions: pd.DataFrame
 
     min_rank = CONFIDENCE_RANK.get(cfg["min_confidence"], 1)
     all_verdicts, usage_total = [], Counter()
+    broader_raw = []          # (celex, narrower cluster, broader cluster, names, confidence)
     for celex, group in cls.groupby("CELEX"):
         celex = str(celex)
         clusters = []
@@ -356,7 +363,7 @@ def judge_and_join(entities_with_clusters: pd.DataFrame, revisions: pd.DataFrame
         for pid, (i, j, sig) in enumerate(pairs):
             v = verdicts.get(pid)
             a, b = clusters[i], clusters[j]
-            ok = accepted(v, payloads[pid]["act_text"], min_rank)
+            ok = bool(cfg["join_same"]) and accepted(v, payloads[pid]["act_text"], min_rank)
             rec = {"celex": celex, "a": a["name"], "b": b["name"], **sig,
                    "label": v["label"] if v else None, "confidence": v["confidence"] if v else None,
                    "basis": (v or {}).get("basis"), "evidence": (v or {}).get("evidence"), "joined": ok}
@@ -365,14 +372,40 @@ def judge_and_join(entities_with_clusters: pd.DataFrame, revisions: pd.DataFrame
                 ra, rb = find(a["cluster_id"]), find(b["cluster_id"])
                 if ra != rb:
                     parent[max(ra, rb)] = min(ra, rb)
+            elif (cfg["link_broader"] and v and v["label"] in ("A_BROADER", "B_BROADER")
+                  and CONFIDENCE_RANK.get(v["confidence"], 0) >= min_rank):
+                narrow, broad = (b, a) if v["label"] == "A_BROADER" else (a, b)
+                broader_raw.append((celex, narrow, broad, v["confidence"]))
 
     mask = ents["entity_type"] == "class"
     ents.loc[mask, "cluster_id"] = [find(c) for c in ents.loc[mask, "cluster_id"]]
+    # a link between two clusters that were joined would be a self-loop: drop it
+    broader_links, dropped_joined = [], 0
+    for celex, narrow, broad, conf in broader_raw:
+        if find(narrow["cluster_id"]) == find(broad["cluster_id"]):
+            dropped_joined += 1
+            continue
+        broader_links.append({"celex": celex, "narrower": narrow["name"], "broader": broad["name"],
+                              "confidence": conf})
     labels = Counter(v["label"] for v in all_verdicts)
     joined = sum(1 for v in all_verdicts if v["joined"])
     report.update({"model": cfg["model"], "prompt_version": PROMPT_VERSION, "pairs": len(all_verdicts),
-                   "labels": dict(labels), "joined_pairs": joined, "usage": dict(usage_total),
-                   "verdicts": all_verdicts})
-    logger.info("Pair judge: %d pairs, %d joined as SAME, labels %s, usage %s.",
-                len(all_verdicts), joined, dict(labels), dict(usage_total))
+                   "join_same": bool(cfg["join_same"]), "link_broader": bool(cfg["link_broader"]),
+                   "labels": dict(labels), "joined_pairs": joined,
+                   "broader_links": broader_links, "broader_dropped_joined": dropped_joined,
+                   "usage": dict(usage_total), "verdicts": all_verdicts})
+    logger.info("Pair judge: %d pairs, %d joined as SAME, %d broader links, labels %s, usage %s.",
+                len(all_verdicts), joined, len(broader_links), dict(labels), dict(usage_total))
     return ents, report
+
+
+def hierarchy_from_report(report: dict, canonical_map: dict[str, dict[str, str]]) -> dict[str, set[str]]:
+    """Broader links of the judge report as {narrower canonical name: {broader canonical names}}.
+    Names are mapped through the partition's canonical map; a link whose ends got one name is dropped."""
+    names = canonical_map.get("class", {})
+    out: dict[str, set[str]] = defaultdict(set)
+    for link in report.get("broader_links") or []:
+        n, b = names.get(link["narrower"]), names.get(link["broader"])
+        if n and b and n != b:
+            out[n].add(b)
+    return dict(out)

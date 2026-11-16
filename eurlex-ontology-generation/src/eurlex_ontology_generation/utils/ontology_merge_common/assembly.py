@@ -98,7 +98,10 @@ def assemble_merged_ontology(
     ontologies: pd.DataFrame,
     canonical_map: dict[str, dict[str, str]],
     source_label: str,
+    hierarchy: dict[str, set[str]] | None = None,
 ) -> tuple[dict, dict]:
+    """`hierarchy`: extra {narrower canonical name: {broader canonical names}} links (pair judge).
+    Links already carried by the input classes (`broader`) are resolved and kept as well."""
 
     # Build entity resolver to map raw strings to canonical names
     _resolve = build_resolver(canonical_map)
@@ -116,6 +119,9 @@ def assemble_merged_ontology(
     type_votes: dict[str, Counter] = defaultdict(Counter)
     is_a_votes: dict[str, Counter] = defaultdict(Counter)
     kind_votes: dict[str, Counter] = defaultdict(Counter)
+    broader_of: dict[str, set[str]] = defaultdict(set)
+    for narrow, broads in (hierarchy or {}).items():
+        broader_of[narrow].update(broads)
     class_iri: dict[str, str] = {}
     class_approved: Counter = Counter()
     class_chunks: Counter = Counter()
@@ -186,6 +192,10 @@ def assemble_merged_ontology(
                 is_a_votes[name][cls["is_a"]] += chunks
             if cls.get("kind"):
                 kind_votes[name][cls["kind"]] += chunks
+            for b in cls.get("broader") or []:
+                rb = resolve(b)
+                if rb:
+                    broader_of[name].add(rb)
             if cls.get("iri"):
                 class_iri.setdefault(name, cls["iri"])
             class_approved[name] += _approved_support(cls, row_approved, chunks)
@@ -337,6 +347,12 @@ def assemble_merged_ontology(
             entry["kind"] = kind_votes[name].most_common(1)[0][0]
         if name in class_iri:
             entry["iri"] = class_iri[name]
+        # narrower -> broader links; a link whose ends were merged into one class is dropped
+        broader = sorted(b for b in broader_of.get(name, ()) if b != name and b in classes)
+        if broader:
+            entry["broader"] = broader
+        if len(broader_of.get(name, ())) > len(broader):
+            dropped["broader_self_or_undefined"] += len(broader_of[name]) - len(broader)
         final_classes.append(entry)
 
     # a name that is used as party/asset in the rights model but typed Legal_extension stays as is:
