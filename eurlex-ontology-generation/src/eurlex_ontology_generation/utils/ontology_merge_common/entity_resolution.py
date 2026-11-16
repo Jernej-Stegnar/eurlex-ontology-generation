@@ -69,6 +69,15 @@ OPPOSITE_TOKENS = [
     {"contribute", "receive"}, {"grant", "revoke"},
 ]
 
+# Modifiers that change what a name refers to: names whose tokens differ by one of them are never
+# merged by similarity (legal texts regulate exactly these distinctions)
+CONTRAST_TOKENS = {"non", "not", "no", "un", "anti", "very", "ultra", "extra", "semi", "partial",
+                   "small", "medium", "large", "micro", "mini", "minimum", "maximum",
+                   "head", "chief", "deputy", "former", "other", "oxo", "bio"}
+# Same head noun, different modifiers (one side or both): a sub-type or a sibling, not a spelling
+# variant. True blocks the similarity merge for them; exact keys and alias tables still merge.
+MODIFIER_VETO = True
+
 # Hand-curated aliases: canonical display name -> known variants.
 # Used to force-merge well-known institutions that embeddings might miss
 ALIAS_GROUPS: dict[str, list[str]] = {
@@ -123,8 +132,28 @@ def norm_tokens(name: str) -> list[str]:
     return toks
 
 
+# "RulesOfTradingVenue" and "TradingVenueRules" name the same thing. For names of the form
+# "<head> of|for|on <complement>" the key puts the complement first, so that the head noun
+# is the last token in both spellings ("CommitteeForRiskAssessment" -> risk assessment committee).
+# Applied only with exactly one connector and no "and" in the head, to stay predictable.
+REORDER_CONNECTORS = {"of", "for", "on"}
+KEY_DROP_TOKENS = {"the"}
+
+
+def key_tokens(name: str) -> list[str]:
+    toks = [t for t in norm_tokens(name) if t not in KEY_DROP_TOKENS]
+    at = [i for i, t in enumerate(toks) if t in REORDER_CONNECTORS]
+    if len(at) == 1 and 0 < at[0] < len(toks) - 1 and "and" not in toks[:at[0]]:
+        i = at[0]
+        head = toks[:i]
+        head[-1] = _singular(head[-1])
+        toks = toks[i + 1:] + head
+
+    return toks
+
+
 def _plain_key(name: str) -> str:
-    return "".join(norm_tokens(name))
+    return "".join(key_tokens(name))
 
 
 # Known individuals from the gazetteer are force-merged too
@@ -167,8 +196,8 @@ def group_key(entity_type: str, name: str) -> str:
     if entity_type == "action":
         return "_".join(norm_tokens(name))
     
-    toks = norm_tokens(name)
-    
+    toks = key_tokens(name)
+
     if len(toks) > 1 and toks[-1] in GENERIC_SUFFIX_TOKENS:
         toks = toks[:-1]
     k = "".join(toks)
@@ -344,11 +373,24 @@ class _UnionFind:
             self.p[max(ra, rb)] = min(ra, rb)
 
 
+_FUNCTION_TOKENS = {"and", "or", "of", "for", "on", "to", "in", "the", "a", "an"}
+
+
+# Content words of a key, singular, without connectors ("CarcinogensAndMutagens" ~ "CarcinogenOrMutagen")
+def _content(toks: list[str]) -> set[str]:
+    return {_singular(t) for t in toks if t not in _FUNCTION_TOKENS}
+
+
 def _mergeable(a: list[str], b: list[str], sim: float) -> bool:
     # Veto rules applied on top of the embedding similarity
     if {t for t in a if t.isdigit()} != {t for t in b if t.isdigit()}:
-        return False                                   
-    
+        return False
+    ca, cb = _content(a), _content(b)
+    if (ca ^ cb) & CONTRAST_TOKENS:
+        return False                                   # NonEquivalence~ vs Equivalence~, VeryLightweight~ vs Lightweight~
+    if MODIFIER_VETO and a and b and a[-1] == b[-1] and ca != cb:
+        return False                                   # Small~/MediumSized~, Lightweight~/PlasticCarrierBag: siblings or sub-types
+
     for pair in OPPOSITE_TOKENS:
         if (set(a) & pair) and (set(b) & pair) and (set(a) & pair) != (set(b) & pair):
             return False
@@ -377,7 +419,7 @@ def _cluster_class_keys(keys: list[str], reps: dict[str, str], model: str, thres
     norms = np.linalg.norm(vecs, axis=1, keepdims=True)
     norms[norms == 0] = 1e-8
     unit = vecs / norms
-    toks = [norm_tokens(reps[k]) for k in keys]
+    toks = [key_tokens(reps[k]) for k in keys]
     block = 512
     
     for start in range(0, len(keys), block):

@@ -7,6 +7,7 @@ from eurlex_ontology_generation.utils.ontology_merge_common.assembly import (
     assemble_merged_ontology,
     validate_merged_ontology,
 )
+from eurlex_ontology_generation.utils.ontology_merge_common.act_aliases import apply_act_aliases
 from eurlex_ontology_generation.utils.ontology_merge_common.entity_resolution import (
     canonicalize_clusters,
     cluster_entities,
@@ -63,6 +64,8 @@ def merge_partition(
     similarity_threshold: float,
     embedding_backend: dict | None = None,
 ) -> tuple[dict, dict, pd.DataFrame]:
+    # acronyms the act defines ("Crypto Approval Authority (CAA)") -> one name per entity, per act
+    revisions, alias_report = apply_act_aliases(revisions)
     entities = extract_entities(revisions)
     entities_with_clusters = cluster_entities(entities, embedding_model, similarity_threshold, embedding_backend)
     canonical_map, cluster_report = canonicalize_clusters(entities_with_clusters)
@@ -70,6 +73,7 @@ def merge_partition(
     merged, provenance = assemble_merged_ontology(
         revisions, canonical_map, source_label=f"partition_{part_id:03d}"
     )
+    provenance["act_aliases"] = alias_report
     provenance["validation_issues"] = validate_merged_ontology(merged)
 
     return merged, provenance, cluster_report
