@@ -29,6 +29,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                     "params:ontology_merge_partition.embedding_model",
                     "params:ontology_merge_partition.similarity_threshold",
                     "params:ontology_merge_partition.embedding_backend",
+                    "params:ontology_merge_partition.pair_judge",
                 ],
                 outputs=[
                     "partition_merged_ontology",

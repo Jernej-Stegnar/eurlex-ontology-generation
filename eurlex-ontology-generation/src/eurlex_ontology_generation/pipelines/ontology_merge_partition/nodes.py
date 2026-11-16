@@ -8,6 +8,7 @@ from eurlex_ontology_generation.utils.ontology_merge_common.assembly import (
     validate_merged_ontology,
 )
 from eurlex_ontology_generation.utils.ontology_merge_common.act_aliases import apply_act_aliases
+from eurlex_ontology_generation.utils.ontology_merge_common.pair_judge import judge_and_join
 from eurlex_ontology_generation.utils.ontology_merge_common.entity_resolution import (
     canonicalize_clusters,
     cluster_entities,
@@ -63,17 +64,21 @@ def merge_partition(
     embedding_model: str,
     similarity_threshold: float,
     embedding_backend: dict | None = None,
+    pair_judge: dict | None = None,
 ) -> tuple[dict, dict, pd.DataFrame]:
     # acronyms the act defines ("Crypto Approval Authority (CAA)") -> one name per entity, per act
     revisions, alias_report = apply_act_aliases(revisions)
     entities = extract_entities(revisions)
     entities_with_clusters = cluster_entities(entities, embedding_model, similarity_threshold, embedding_backend)
+    # optional: an LLM decides, per act, which look-alike clusters are the same entity
+    entities_with_clusters, judge_report = judge_and_join(entities_with_clusters, revisions, pair_judge)
     canonical_map, cluster_report = canonicalize_clusters(entities_with_clusters)
 
     merged, provenance = assemble_merged_ontology(
         revisions, canonical_map, source_label=f"partition_{part_id:03d}"
     )
     provenance["act_aliases"] = alias_report
+    provenance["pair_judge"] = judge_report
     provenance["validation_issues"] = validate_merged_ontology(merged)
 
     return merged, provenance, cluster_report
