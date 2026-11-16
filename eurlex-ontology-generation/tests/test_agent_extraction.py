@@ -277,6 +277,15 @@ def test_repo_start_library_is_valid():
     assert list(lib.skills) == ["writing-skills"] and lib.lessons == [] and lib.check_caps() == []
 
 
+def test_frozen_lib002_is_unchanged():
+    # A1 library: lib_002 from the T9 learning loop (2026-11-16), frozen after Jernej's review
+    from pathlib import Path
+    lib = Library(Path(__file__).resolve().parents[1] / "agent_skills_lib002")
+    assert lib.content_hash() == "d83fc6fe1efab055" and lib.check_caps() == []
+    assert sorted(lib.skills) == ["constraint-qualifiers", "non-rule-exclusion", "passive-impersonal-duties",
+                                  "writing-skills"] and len(lib.lessons) == 6
+
+
 def test_tool_specs_cover_handlers_and_inline_the_schema():
     specs = tool_specs(build_ontology_model())
     assert sorted(s["function"]["name"] for s in specs) == sorted(HANDLERS)
