@@ -34,6 +34,11 @@ ontology_merge_partition:
   # Off by default: it calls a paid API. Verdicts are cached, so reruns cost nothing.
   pair_judge:
     enabled: false
+    join_same: true              # SAME verdicts join clusters (T13 F3: half wrong on the spot act)
+    # A_BROADER / B_BROADER verdicts become "narrower is a kind of broader" links (rdfs:subClassOf).
+    # T13 step 4 measured it with reasoning on (extra_body thinking enabled, max_tokens 32000) and
+    # join_same false: 141 links, 66% right against the scan labels, direction 96% (76 of 79).
+    link_broader: false
     model: deepseek-v4-pro
     # Defined inline (not via globals) so that envs whose globals lack this profile still load.
     llm_backend:
