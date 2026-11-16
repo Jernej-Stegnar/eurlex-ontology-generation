@@ -9,6 +9,7 @@ ontology_revision:
   model: gemma3:4b  
   temperature: 0.0
   seed: 42           # Fixed sampling seed, so reruns with the same settings are comparable
+  drop_recital_rules: true  # Drop rules tagged provision "recital" after every revision (T4 fix 3)
   json_mode: true
 
   # Execution backend and parallelism settings for LLM inference
@@ -50,11 +51,14 @@ ontology_revision:
     {upper_ontology}
     - "kind" is "individual" for one named thing (a country, an institution, a named fund or programme) and "class" for a kind of thing.
     - Never use Permission, Prohibition, Duty, Constraint, Assignee or Target in a class name: express such content as a rule in rights_model.
+    - Every rule keeps "asset" (short class name) and "action_object" (the object copied word for word from the source text with all its qualifiers). Fill in or complete action_object where it is missing or shortened; never cut it down to the class name. action_object is a noun phrase, never a sentence: remove any subject and any "shall"/"must" verb from it, and move conditions into constraints.
     - Rule "action" is one canonical verb from: {actions} (or "other"); keep the original wording in "action_label".
     - Constraints are {{left_operand, operator, right_operand, unit}} with left_operand from: {left_operands}; operator from: {operators}.
+    - Every condition the source sentence attaches to a rule gets its own constraint, copied word for word: purpose -> purpose; exception ("except", "unless") -> condition starting "except "; prerequisite ("subject to", "provided that", "where", "in accordance with") -> condition; scope restriction ("only") -> condition; dates, periods, amounts -> dateTime / elapsedTime / payAmount; triggering events -> event. Add conditions a rule is missing; never drop one.
     - Relationship "relation" is one of: {relations}.
     - Do not keep duties or prohibitions taken from recitals (paragraphs after "Whereas:").
     - Rule type follows the verb of the source sentence: "shall"/"must" -> duties; "shall not"/"may not"/"is prohibited" -> prohibitions; "may"/"is authorised"/"is approved" or "shall not apply" that lifts an obligation -> permissions. A prohibition needs a negation in the sentence. Move a rule to another list only if its verb requires it, even if the review suggests otherwise. Definitions, scope, entry into force and amending instructions are not rules.
+    - One rule per actor and action: rules that split one sentence's verbs or objects for the same actor are merged into one (action_label names all verbs, action_object lists all objects). Points (a), (b), (c) with their own obligation and separate paragraphs stay separate.
     Invalid values are replaced in code after you answer, so choose the closest valid value rather than inventing one.
     6. PRESERVE VALID CONTENT: Keep every class, relationship, and instance from the Candidate Ontology that was NOT flagged as wrong. Do not discard correct information.
     7. SCHEMA CONSTRAINT: The corrected ontology output MUST contain EXACTLY these top-level keys, nothing more and nothing less: "ontology_name", "description", "odrl_alignment", "classes", "relationships", "rights_model", "legal_patterns", "example_instances". NEVER include review-related fields such as "approved", "revision_required", "strengths", "weaknesses", "missing_concepts", "overall_score" in the output ontology.
@@ -98,15 +102,15 @@ ontology_revision:
       ],
       "rights_model": {{
         "permissions": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<short class name of what the action applies to>", "action_object": "<what the action applies to, copied word for word from the text with all its qualifiers>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": [{{"left_operand": "<allowed left operand>", "operator": "<allowed operator>", "right_operand": "<value copied word for word from the text>", "unit": "<unit from the text, or empty>"}}]}}
         ],
         "prohibitions": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<short class name of what the action applies to>", "action_object": "<what the action applies to, copied word for word from the text with all its qualifiers>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": []}}
         ],
         "duties": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<short class name of what the action applies to>", "action_object": "<what the action applies to, copied word for word from the text with all its qualifiers>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": []}}
         ]
       }},

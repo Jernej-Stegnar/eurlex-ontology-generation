@@ -12,6 +12,7 @@ ontology_generation:
   output_directory: data/04_feature/ontology_candidates
   temperature: 0.1        # Controls randomness: lower values (close to 0) make output deterministic
   seed: 42                # Fixed sampling seed, so reruns with the same settings are comparable
+  drop_recital_rules: true  # Drop rules the model tags provision "recital" (recitals do not bind; T4 fix 3)
   num_ctx: 8192           # Ollama context window; set explicitly so it does not depend on the server default
   ontology_domain: ODRL   # Domain of the ontology
   json_mode: true
@@ -51,6 +52,8 @@ ontology_generation:
     - "shall not apply" or "except where" that lifts an obligation -> permissions (being excused from that obligation).
     - Not a rule, leave it out: definitions, scope ("This Regulation applies to"), entry into force or application dates, amending instructions ("Article 3 is replaced by"), "This Decision is addressed to", descriptions.
     Check every rule before writing it: a prohibition needs a negation (not, no, prohibited) in the sentence; "shall" without a negation is a duty, not a prohibition; "may" is a permission, never a duty.
+
+    GRANULARITY. One rule per actor and action. When one sentence gives the same actor several verbs for the same object ("shall purchase, sell or otherwise deal in"), or one verb with several objects ("shall notify the date, the quantity and the place"), write ONE rule: action_label names all the verbs, action_object lists all the objects. Points (a), (b), (c) that each set their own obligation, and separate paragraphs, stay separate rules.
     Permission, Prohibition, Duty, Constraint, Policy, Assignee and Target are ODRL structure: NEVER create classes with these words in their name (no "AuditDuty", no "AccessPermissionTarget"). Express them as rules instead.
 
     CLASSES. Every class has:
@@ -61,10 +64,20 @@ ontology_generation:
 
     ACTIONS. "action" is one canonical verb from: {actions}. Use "other" only if none fits. Always also give "action_label": the action as worded in the text, snake_case verb plus object.
 
+    OBJECT. "asset" is the short class name of what the action applies to (it links the rule to a class). "action_object" is the same thing copied word for word from the text WITH all its qualifiers: not "vehicles" but "vehicles registered before 1 January 2010 with a maximum mass above 3.5 tonnes"; not "reports" but "annual reports on the use of the funds received under the programme". Never shorten action_object to the class name. action_object is a NOUN PHRASE, never a sentence: no "shall", "must" or other verb of the provision, no subject in front of it ("the Member State shall notify the measures" -> "the measures"). Conditions (where, unless, subject to, for the purpose of) go into constraints, not into action_object.
+
     CONSTRAINTS. Each constraint is {{left_operand, operator, right_operand, unit}}:
     - left_operand from: {left_operands}
     - operator from: {operators}
     - right_operand copied from the text (dates as YYYY-MM-DD; amounts as digits with the currency in unit).
+    Give EVERY condition the sentence attaches to the rule its own constraint; do not keep only the first one:
+    - purpose ("for the purpose of", "in order to", "to ensure that") -> purpose;
+    - exception ("except", "unless", "with the exception of", "without prejudice to") -> condition, right_operand starting "except ";
+    - prerequisite ("subject to", "provided that", "where", "if", "in accordance with", "under the conditions set out in") -> condition;
+    - restriction of scope ("only", "solely", "limited to") -> condition;
+    - deadlines, dates, periods and amounts -> dateTime / elapsedTime / payAmount;
+    - triggering events ("in the event of", "upon", "on arrival") -> event.
+    Copy each right_operand word for word, including article references ("Article 5(3)").
 
     RELATIONSHIPS. "relation" is one of: {relations}. Use the active direction (A funds B, not B funded_by A).
 
@@ -96,15 +109,15 @@ ontology_generation:
       ],
       "rights_model": {{
         "permissions": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MAY act>", "assigner": "<who grants it, or empty>", "asset": "<short class name of what the action applies to>", "action_object": "<what the action applies to, copied word for word from the text with all its qualifiers>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": [{{"left_operand": "<allowed left operand>", "operator": "<allowed operator>", "right_operand": "<value copied word for word from the text>", "unit": "<unit from the text, or empty>"}}]}}
         ],
         "prohibitions": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST NOT act>", "assigner": "<who imposes it, or empty>", "asset": "<short class name of what the action applies to>", "action_object": "<what the action applies to, copied word for word from the text with all its qualifiers>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": []}}
         ],
         "duties": [
-          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<what the action applies to>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
+          {{"action": "<canonical verb>", "action_label": "<verb_object as worded in the text>", "party": "<who MUST act>", "assigner": "<who imposes it, or empty>", "asset": "<short class name of what the action applies to>", "action_object": "<what the action applies to, copied word for word from the text with all its qualifiers>", "provision": "<where the rule is stated: recital only for a Whereas paragraph, annex for an Annex, else article>",
             "constraints": []}}
         ]
       }},

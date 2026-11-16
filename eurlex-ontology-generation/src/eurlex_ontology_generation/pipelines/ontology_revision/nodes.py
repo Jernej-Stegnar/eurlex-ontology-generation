@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 from ...utils.llm_client import llm_chat, run_parallel
-from ...utils.ontology_normalize import normalize_chunk_ontology
+from ...utils.ontology_normalize import drop_recital_rules, normalize_chunk_ontology
 from ...utils.ontology_schema import build_ontology_model
 from ...utils.persist import append_dedup_csv
 from ...utils.vocabulary import load_vocabulary, render_prompt
@@ -107,15 +107,22 @@ def revise_ontologies(
     normalize_after_revision: bool = True,
     vocabulary_path: str | None = None,
     seed: int | None = None,
+    drop_recitals: bool = False,
 ) -> pd.DataFrame:
 
     rendered_system_prompt = render_prompt(system_prompt, vocabulary_path)
     schema_model = build_ontology_model(vocabulary_path) if json_mode else None
 
     def _normalize(ontology: dict) -> tuple[dict, list]:
+        # A revision can re-add recital rules (e.g. on a reviewer's suggestion): drop them again.
+        dropped = 0
+        if drop_recitals:
+            ontology, dropped = drop_recital_rules(ontology)
+        note = [{"code": "recital_rules_dropped", "detail": str(dropped)}] if dropped else []
         if not normalize_after_revision:
-            return ontology, []
-        return normalize_chunk_ontology(ontology, load_vocabulary(vocabulary_path))
+            return ontology, note
+        normalized, changes = normalize_chunk_ontology(ontology, load_vocabulary(vocabulary_path))
+        return normalized, note + changes
 
     ontology_reviews = load_ontology_reviews(
         batch_id=batch_id,

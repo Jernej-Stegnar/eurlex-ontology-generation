@@ -71,6 +71,7 @@ def build_ontology_model(vocabulary_path: str | None = None) -> type[BaseModel]:
         party=(str, Field(description="Class or individual name of the party that holds the permission, prohibition or duty (ODRL assignee).")),
         assigner=(str, Field("", description="Party that grants the permission or imposes the duty, if stated.")),
         asset=(str, Field("", description="Class or individual name the action applies to.")),
+        action_object=(str, Field("", description="What the action applies to, copied word for word from the text with all its qualifiers (e.g. 'vehicles registered before 1 January 2010 with a maximum mass above 3.5 tonnes'); asset stays the short class name.")),
         provision=(_lit(PROVISIONS), Field("article", description="Where the rule is stated. Recitals are not binding.")),
         constraints=(list[Constraint], Field(default_factory=list)),
     )

@@ -28,3 +28,30 @@ ontology_merge_partition:
   # too high -> obvious duplicates (e.g. "Commission" vs "European
   # Commission") stay separate.
   similarity_threshold: 0.86
+
+  # LLM pair judge (utils/ontology_merge_common/pair_judge.py): per act, look-alike clusters
+  # are labelled SAME / BROADER / PART_OR_ROLE / SIBLING / DIFFERENT and SAME ones are joined.
+  # Off by default: it calls a paid API. Verdicts are cached, so reruns cost nothing.
+  pair_judge:
+    enabled: false
+    model: deepseek-v4-pro
+    # Defined inline (not via globals) so that envs whose globals lack this profile still load.
+    llm_backend:
+      provider: openai_compatible
+      base_url: https://api.deepseek.com
+      api_key_env: DEEPSEEK_API_KEY
+      structured_output: json_object
+      extra_body:
+        thinking: {type: disabled}
+      max_workers: 4
+      timeout_s: 300
+      max_retries: 4
+    temperature: 0.0
+    seed: 42
+    batch_size: 12               # pairs per call; all from one act
+    max_tokens: 3000
+    min_confidence: medium       # SAME below this stays apart
+    name_sim: 0.5                # blocking: character n-gram cosine of the names
+    desc_sim: 0.4                # blocking: TF-IDF cosine of the descriptions
+    max_pairs_per_act: 400
+    cache_path: data/05_model_input/pair_judge_cache.jsonl
