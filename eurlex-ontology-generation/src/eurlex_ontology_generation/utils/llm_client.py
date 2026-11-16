@@ -227,6 +227,32 @@ class ToolCall:
     arguments: str                  # raw JSON string as sent by the model
     args: dict | None               # parsed arguments, None if not a JSON object
     parse_error: str | None = None
+    repaired: str | None = None     # what parse_tool_arguments had to drop to parse the arguments
+
+
+def parse_tool_arguments(arguments: str) -> tuple[dict | None, str | None, str | None]:
+    """Parse a tool call's JSON arguments: (args, parse_error, repaired).
+
+    Models sometimes send a complete JSON object followed by stray characters
+    (DeepSeek: one surplus closing brace), which json.loads rejects as "Extra
+    data". Then the first complete object is used and `repaired` says what was
+    dropped, so the trace can show it.
+    """
+    if not arguments:
+        return {}, None, None
+    repaired = None
+    try:
+        parsed = json.loads(arguments)
+    except json.JSONDecodeError as exc:
+        if not exc.msg.startswith("Extra data"):
+            return None, f"invalid JSON arguments: {exc}", None
+        start = len(arguments) - len(arguments.lstrip())
+        parsed, end = json.JSONDecoder().raw_decode(arguments, start)
+        tail = arguments[end:]
+        repaired = f"dropped {len(tail)} trailing character(s) after the JSON object: {tail[:40]!r}"
+    if not isinstance(parsed, dict):
+        return None, "arguments are not a JSON object", None
+    return parsed, None, repaired
 
 
 @dataclass
@@ -292,17 +318,9 @@ def _openai_chat_messages(backend, model, messages, tools, tool_choice, temperat
     for tc in raw.get("tool_calls") or []:
         fn = tc.get("function") or {}
         arguments = fn.get("arguments") or ""
-        args, err = None, None
-        try:
-            parsed = json.loads(arguments) if arguments else {}
-            if isinstance(parsed, dict):
-                args = parsed
-            else:
-                err = "arguments are not a JSON object"
-        except json.JSONDecodeError as exc:
-            err = f"invalid JSON arguments: {exc}"
+        args, err, repaired = parse_tool_arguments(arguments)
         calls.append(ToolCall(id=tc.get("id", ""), name=fn.get("name", ""), arguments=arguments,
-                              args=args, parse_error=err))
+                              args=args, parse_error=err, repaired=repaired))
 
     # Keep only the fields a provider accepts back in the history; DeepSeek
     # requires reasoning_content to be returned within a tool-calling turn

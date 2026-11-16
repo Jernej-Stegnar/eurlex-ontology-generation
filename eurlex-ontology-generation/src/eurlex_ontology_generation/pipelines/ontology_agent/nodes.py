@@ -96,6 +96,7 @@ def agent_extract_batch(
                      "prompt_tokens": r.prompt_tokens, "output_tokens": r.output_tokens,
                      "cache_hit_tokens": r.cache_hit_tokens, "agent_status": r.status, "agent_steps": r.steps,
                      "agent_submits": r.submits, "agent_tool_calls": r.tool_calls,
+                     "agent_unparsable_calls": r.unparsable_calls, "agent_repaired_calls": r.repaired_calls,
                      "skills_loaded": ";".join(r.skills_loaded), "library_hash": r.library_hash,
                      "seconds": r.seconds, "detail": r.detail})
         rev.append({**common, "round": 1, "text": texts[r.chunk_id], "done_reason": r.done_reason,

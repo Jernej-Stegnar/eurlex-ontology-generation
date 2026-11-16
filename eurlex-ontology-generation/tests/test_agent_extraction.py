@@ -8,7 +8,7 @@ from eurlex_ontology_generation.agent.extraction import AgentConfig, run_act, ru
 from eurlex_ontology_generation.agent.extraction.library import Library
 from eurlex_ontology_generation.agent.extraction.memory import ActMemory
 from eurlex_ontology_generation.agent.extraction.tools import HANDLERS, Act, tool_specs
-from eurlex_ontology_generation.utils.llm_client import ChatTurn, ToolCall
+from eurlex_ontology_generation.utils.llm_client import ChatTurn, ToolCall, parse_tool_arguments
 from eurlex_ontology_generation.utils.ontology_schema import build_ontology_model
 
 CHUNKS = [
@@ -60,12 +60,10 @@ class FakeLLM:
         calls, raw = [], []
         for i, (name, args) in enumerate(step):
             arguments = args if isinstance(args, str) else json.dumps(args)
-            try:
-                parsed, err = json.loads(arguments), None
-            except json.JSONDecodeError as exc:
-                parsed, err = None, str(exc)
+            parsed, err, repaired = parse_tool_arguments(arguments)      # same parser as the real client
             cid = f"c{len(self.calls)}_{i}"
-            calls.append(ToolCall(id=cid, name=name, arguments=arguments, args=parsed, parse_error=err))
+            calls.append(ToolCall(id=cid, name=name, arguments=arguments, args=parsed, parse_error=err,
+                                  repaired=repaired))
             raw.append({"id": cid, "type": "function", "function": {"name": name, "arguments": arguments}})
         msg = {"role": "assistant", "content": "", **({"tool_calls": raw} if raw else {})}
         return ChatTurn(message=msg, content="", tool_calls=calls,
@@ -123,11 +121,57 @@ def test_schema_error_is_returned_and_fixed(tmp_path):
     assert res.status in ("accepted", "accepted_with_warnings") and res.submits >= 2
 
 
-def test_invalid_json_arguments_count_as_a_submit(tmp_path):
+def test_invalid_json_arguments_are_reported_but_not_a_submit(tmp_path):
     llm = FakeLLM([[("submit_ontology", '{"ontology": {broken')]], default=submit(onto()))
     res = run_chunk(make_act(), "32099L0001_2", cfg(tmp_path, llm))
     assert "valid JSON" in tool_results(llm.calls[1]["messages"])[0]
-    assert res.status.startswith("accepted") and res.submits >= 2
+    assert res.status.startswith("accepted") and res.unparsable_calls == 1
+    assert res.submits == res.steps - 1          # every later turn was a real submission
+
+
+def test_trailing_garbage_after_submit_is_repaired_and_accepted(tmp_path):
+    # DeepSeek pattern from the learning loop: a complete object plus one surplus "}" ("Extra data")
+    raw = json.dumps({"ontology": onto()}) + "}"
+    llm = FakeLLM([[("submit_ontology", raw)]], default=[("submit_ontology", raw)])
+    res = run_chunk(make_act(), "32099L0001_2", cfg(tmp_path, llm, max_submits=3))
+    assert res.status.startswith("accepted") and res.unparsable_calls == 0 and res.repaired_calls >= 1
+    assert res.ontology["rights_model"]["duties"][0]["action_label"] == "notify_measures"
+    trace = [json.loads(x) for x in (tmp_path / "traces" / "32099L0001_2.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert not any("valid JSON" in r["result"] for r in trace if r["event"] == "tool")
+    turn = next(r for r in trace if r["event"] == "turn")
+    assert "dropped 1 trailing character" in turn["tool_calls"][0]["repaired"]
+
+
+def test_unparsable_submits_do_not_exhaust_max_submits(tmp_path):
+    broken = [("submit_ontology", '{"ontology": {broken')]
+    llm = FakeLLM([broken, broken, broken], default=submit(onto()))
+    res = run_chunk(make_act(), "32099L0001_2", cfg(tmp_path, llm, max_submits=3))
+    assert res.status.startswith("accepted") and res.unparsable_calls == 3
+    assert 1 <= res.submits <= 2 and res.ontology is not None
+
+
+def test_bad_keyword_submits_do_not_exhaust_max_submits(tmp_path):
+    wrong = [("submit_ontology", {"ontology_json": onto()})]
+    llm = FakeLLM([wrong, wrong, wrong], default=submit(onto()))
+    res = run_chunk(make_act(), "32099L0001_2", cfg(tmp_path, llm, max_submits=3))
+    assert "bad arguments" in tool_results(llm.calls[1]["messages"])[0]
+    assert res.status.startswith("accepted") and 1 <= res.submits <= 2
+
+
+@pytest.mark.parametrize("raw,args,err,repaired", [
+    ('{"a": 1}', {"a": 1}, None, None),
+    ('', {}, None, None),
+    ('{"a": 1}}', {"a": 1}, None, "dropped 1 trailing"),
+    ('  {"a": 1} trailing text', {"a": 1}, None, "dropped 14 trailing"),
+    ('{"a": 1', None, "invalid JSON arguments", None),
+    ('[1, 2]', None, "not a JSON object", None),
+    ('[1] {"a": 1}', None, "not a JSON object", None),
+])
+def test_parse_tool_arguments(raw, args, err, repaired):
+    a, e, r = parse_tool_arguments(raw)
+    assert a == args
+    assert (e is None) if err is None else (err in e)
+    assert (r is None) if repaired is None else r.startswith(repaired)
 
 
 def test_last_turns_force_a_submission(tmp_path):

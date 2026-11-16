@@ -82,8 +82,10 @@ class ChunkResult:
     normalization_changes: list = field(default_factory=list)
     findings: list = field(default_factory=list)      # problems of the last submission
     steps: int = 0
-    submits: int = 0
+    submits: int = 0            # submissions that reached the checker (unparsable ones do not count)
     tool_calls: int = 0
+    unparsable_calls: int = 0   # tool calls whose arguments were not a JSON object, even after repair
+    repaired_calls: int = 0     # tool calls parsed only after dropping trailing characters
     prompt_tokens: int = 0
     output_tokens: int = 0
     cache_hit_tokens: int = 0
@@ -158,7 +160,8 @@ def run_chunk(act: Act, chunk_id: str, cfg: AgentConfig, *, library: Library | N
             trace.add(event="turn", step=step, forced=force, done_reason=turn.done_reason,
                       prompt_tokens=turn.prompt_tokens, output_tokens=turn.output_tokens,
                       cache_hit_tokens=turn.cache_hit_tokens, content=turn.content[:2000],
-                      tool_calls=[{"name": c.name, "arguments": c.arguments[:20000]} for c in turn.tool_calls])
+                      tool_calls=[{"name": c.name, "arguments": c.arguments[:20000],
+                                   **({"repaired": c.repaired} if c.repaired else {})} for c in turn.tool_calls])
 
             if not turn.tool_calls:
                 messages.append({"role": "user", "content": "Use the tools; finish by calling submit_ontology "
@@ -166,9 +169,11 @@ def run_chunk(act: Act, chunk_id: str, cfg: AgentConfig, *, library: Library | N
                 continue
             for call in turn.tool_calls:
                 res.tool_calls += 1
+                res.repaired_calls += bool(call.repaired)
                 if call.parse_error:
-                    if call.name == "submit_ontology":
-                        st.submits += 1
+                    # not a submission: the checker never saw it, so it does not use up max_submits
+                    # (max_steps still bounds the episode)
+                    res.unparsable_calls += 1
                     out = f"error: {call.parse_error}. Send the arguments again as valid JSON."
                 else:
                     out = call_tool(st, call.name, call.args)
